@@ -537,8 +537,367 @@ for (num, sheet, error, fix) in notes:
     ws5.cell(row=row, column=4).alignment = left_top
     ws5.row_dimensions[row].height = 65
 
+# ═══════════════════════════════════════════════════════════════════
+# Sheet 6: РАСЧЁТ ПАДЕНИЯ НАПРЯЖЕНИЯ (Voltage Drop Calculation)
+# ═══════════════════════════════════════════════════════════════════
+ws6 = wb.create_sheet("Падение напряжения")
+ws6.sheet_properties.tabColor = 'FF6600'
+
+warn_fill = PatternFill(start_color='FFC7CE', end_color='FFC7CE', fill_type='solid')
+ok_fill = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')
+crit_fill = PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')
+info_fill = PatternFill(start_color='DAEEF3', end_color='DAEEF3', fill_type='solid')
+
+col_w6 = [40, 14, 14, 14, 14, 14]
+for i, w in enumerate(col_w6, 1):
+    ws6.column_dimensions[get_column_letter(i)].width = w
+
+ws6.merge_cells('A1:F1')
+ws6['A1'] = 'РАСЧЁТ ПАДЕНИЯ НАПРЯЖЕНИЯ В КАБЕЛЯХ ПИТАНИЯ / VOLTAGE DROP CALCULATION'
+ws6['A1'].font = title_font
+ws6['A1'].alignment = Alignment(horizontal='center')
+
+ws6.merge_cells('A2:F2')
+ws6['A2'] = 'DEEPAK K1 — GP Plant  |  421457.103E1'
+ws6['A2'].font = Font(name='Arial', size=10, italic=True)
+ws6['A2'].alignment = Alignment(horizontal='center')
+
+# ── Section: Схема питания ──
+row = 4
+ws6.merge_cells(f'A{row}:F{row}')
+ws6.cell(row=row, column=1, value='СХЕМА ЦЕПИ ПИТАНИЯ ТРАНСМИТТЕРОВ')
+ws6.cell(row=row, column=1).font = sub_header_font
+ws6.cell(row=row, column=1).fill = sub_header_fill
+ws6.cell(row=row, column=1).alignment = center
+for c in range(1, 7):
+    ws6.cell(row=row, column=c).border = border_all
+
+row = 5
+ws6.merge_cells(f'A{row}:F{row}')
+ws6.cell(row=row, column=1,
+    value='SCADA Ekor Box (24VDC) ──[ Cable 9: 250м, 1.5мм² ]──> Connection Box '
+          '──[ Cable 3: 15м ]──> Трансмиттер №1')
+ws6.cell(row=row, column=1).font = Font(name='Consolas', size=10)
+ws6.cell(row=row, column=1).alignment = left_wrap
+ws6.row_dimensions[row].height = 18
+
+row = 6
+ws6.merge_cells(f'A{row}:F{row}')
+ws6.cell(row=row, column=1,
+    value='                                                       '
+          '                   └──[ Cable 4: 15м ]──> Трансмиттер №2')
+ws6.cell(row=row, column=1).font = Font(name='Consolas', size=10)
+ws6.cell(row=row, column=1).alignment = left_wrap
+
+row = 7
+ws6.merge_cells(f'A{row}:F{row}')
+ws6.cell(row=row, column=1,
+    value='ВАЖНО: Cable 9 несёт суммарный ток ОБОИХ трансмиттеров!')
+ws6.cell(row=row, column=1).font = note_font
+ws6.cell(row=row, column=1).fill = error_fill
+ws6.cell(row=row, column=1).alignment = center
+for c in range(1, 7):
+    ws6.cell(row=row, column=c).border = border_all
+
+# ── Section: Исходные данные ──
+row = 9
+ws6.merge_cells(f'A{row}:F{row}')
+ws6.cell(row=row, column=1, value='ИСХОДНЫЕ ДАННЫЕ')
+ws6.cell(row=row, column=1).font = sub_header_font
+ws6.cell(row=row, column=1).fill = sub_header_fill
+ws6.cell(row=row, column=1).alignment = center
+for c in range(1, 7):
+    ws6.cell(row=row, column=c).border = border_all
+
+input_data = [
+    ('Напряжение источника (SCADA Ekor Box)', '24.0 В'),
+    ('Удельное сопротивление меди при 20°C (ρ₂₀)', '0.0175 Ом·мм²/м'),
+    ('Температурный коэффициент меди (α)', '0.00393 1/°C'),
+    ('Cable 9: длина / сечение', '250 м / 1.5 мм²'),
+    ('Cable 3: длина / сечение', '15 м / 1.5 мм²'),
+    ('Cable 4: длина / сечение', '15 м / 1.5 мм²'),
+    ('Допустимый диапазон питания трансмиттера', '18...30 В'),
+    ('Рекомендуемый минимум (с запасом на пульсации)', '20 В'),
+]
+for label, val in input_data:
+    row += 1
+    ws6.cell(row=row, column=1, value=label)
+    ws6.cell(row=row, column=1).font = normal_font
+    ws6.cell(row=row, column=1).alignment = left_wrap
+    ws6.merge_cells(f'B{row}:F{row}')
+    ws6.cell(row=row, column=2, value=val)
+    ws6.cell(row=row, column=2).font = sub_header_font
+    ws6.cell(row=row, column=2).alignment = center
+    for c in range(1, 7):
+        ws6.cell(row=row, column=c).border = border_all
+
+# ── Section: Потребление тока ──
+row += 2
+ws6.merge_cells(f'A{row}:F{row}')
+ws6.cell(row=row, column=1, value='ПОТРЕБЛЕНИЕ ТОКА ТРАНСМИТТЕРА (РАЗБИВКА)')
+ws6.cell(row=row, column=1).font = sub_header_font
+ws6.cell(row=row, column=1).fill = sub_header_fill
+ws6.cell(row=row, column=1).alignment = center
+for c in range(1, 7):
+    ws6.cell(row=row, column=c).border = border_all
+
+current_breakdown = [
+    ('Электроника трансмиттера (MCU, АЦП, ЦАП)', '~80 мА'),
+    ('RS-485 приёмопередатчик', '~15 мА'),
+    ('Выход 4-20 мА QS1 (Потенциал/ORP)', '4...20 мА'),
+    ('Выход 4-20 мА QS2 (pH/Концентрация)', '4...20 мА'),
+    ('Запас на пульсации и потери в стабилизаторе', '~15 мА'),
+]
+for label, val in current_breakdown:
+    row += 1
+    ws6.cell(row=row, column=1, value=label)
+    ws6.cell(row=row, column=1).font = small_font
+    ws6.cell(row=row, column=1).alignment = left_wrap
+    ws6.merge_cells(f'B{row}:F{row}')
+    ws6.cell(row=row, column=2, value=val)
+    ws6.cell(row=row, column=2).font = normal_font
+    ws6.cell(row=row, column=2).alignment = center
+    for c in range(1, 7):
+        ws6.cell(row=row, column=c).border = border_all
+
+# ── Section: Сопротивление кабелей ──
+row += 2
+ws6.merge_cells(f'A{row}:F{row}')
+ws6.cell(row=row, column=1, value='СОПРОТИВЛЕНИЕ КАБЕЛЕЙ (одна жила, Ом)')
+ws6.cell(row=row, column=1).font = sub_header_font
+ws6.cell(row=row, column=1).fill = sub_header_fill
+ws6.cell(row=row, column=1).alignment = center
+for c in range(1, 7):
+    ws6.cell(row=row, column=c).border = border_all
+
+row += 1
+resist_headers = ['Кабель', 'R@20°C', 'R@35°C', 'R@50°C', 'R@65°C', 'R петли@50°C']
+for i, h in enumerate(resist_headers, 1):
+    ws6.cell(row=row, column=i, value=h)
+style_header_row(ws6, row, 1, 6)
+
+rho_20 = 0.0175
+alpha_cu = 0.00393
+cable_params = [
+    ('Cable 9 (250м, 1.5мм²)', 250, 1.5),
+    ('Cable 3 (15м, 1.5мм²)', 15, 1.5),
+    ('Cable 4 (15м, 1.5мм²)', 15, 1.5),
+]
+for (name, length, section) in cable_params:
+    row += 1
+    ws6.cell(row=row, column=1, value=name)
+    for idx, temp in enumerate([20, 35, 50, 65]):
+        rho_t = rho_20 * (1 + alpha_cu * (temp - 20))
+        r = rho_t * length / section
+        ws6.cell(row=row, column=2 + idx, value=round(r, 3))
+    # Loop resistance at 50°C
+    rho_50 = rho_20 * (1 + alpha_cu * 30)
+    r_loop = 2 * rho_50 * length / section
+    ws6.cell(row=row, column=6, value=round(r_loop, 3))
+    style_row(ws6, row, 1, 6)
+    ws6.cell(row=row, column=1).alignment = left_wrap
+
+# ═══════════════════════════════════════════════════════════════════
+# MAIN CALCULATION TABLE
+# ═══════════════════════════════════════════════════════════════════
+row += 2
+ws6.merge_cells(f'A{row}:F{row}')
+ws6.cell(row=row, column=1,
+    value='СВОДНАЯ ТАБЛИЦА: НАПРЯЖЕНИЕ НА КЛЕММАХ ТРАНСМИТТЕРА (В)')
+ws6.cell(row=row, column=1).font = title_font
+ws6.cell(row=row, column=1).fill = PatternFill(start_color='FFC000',
+    end_color='FFC000', fill_type='solid')
+ws6.cell(row=row, column=1).alignment = center
+for c in range(1, 7):
+    ws6.cell(row=row, column=c).border = border_all
+ws6.row_dimensions[row].height = 30
+
+row += 1
+summary_headers = ['Режим работы', 'I транс., мА', '20°C', '35°C', '50°C', '65°C']
+for i, h in enumerate(summary_headers, 1):
+    ws6.cell(row=row, column=i, value=h)
+style_header_row(ws6, row, 1, 6)
+
+scenarios = [
+    ('Минимальный (холостой ход, выходы 4мА)', 60),
+    ('Номинальный (выходы ~12мА)', 120),
+    ('Максимальный (выходы 20мА, полная нагрузка)', 150),
+    ('Аварийный (пусковой бросок)', 200),
+]
+
+for (scenario_name, I_mA) in scenarios:
+    row += 1
+    I_tx = I_mA / 1000.0
+    I_total_cab9 = 2 * I_tx
+    ws6.cell(row=row, column=1, value=scenario_name)
+    ws6.cell(row=row, column=1).font = normal_font
+    ws6.cell(row=row, column=1).alignment = left_wrap
+    ws6.cell(row=row, column=2, value=I_mA)
+    ws6.cell(row=row, column=2).font = sub_header_font
+    ws6.cell(row=row, column=2).alignment = center
+
+    for idx, temp in enumerate([20, 35, 50, 65]):
+        rho_t = rho_20 * (1 + alpha_cu * (temp - 20))
+        R9 = rho_t * 250 / 1.5
+        R3 = rho_t * 15 / 1.5
+        dU = 2 * R9 * I_total_cab9 + 2 * R3 * I_tx
+        V = 24.0 - dU
+        cell = ws6.cell(row=row, column=3 + idx, value=round(V, 2))
+        cell.font = Font(name='Arial', size=11, bold=True)
+        cell.alignment = center
+        if V < 18.0:
+            cell.fill = crit_fill
+            cell.font = Font(name='Arial', size=11, bold=True, color='FFFFFF')
+        elif V < 20.0:
+            cell.fill = warn_fill
+        else:
+            cell.fill = ok_fill
+
+    for c in range(1, 7):
+        ws6.cell(row=row, column=c).border = border_all
+    ws6.row_dimensions[row].height = 24
+
+# ── Legend ──
+row += 1
+ws6.cell(row=row, column=1, value='Цветовая шкала:')
+ws6.cell(row=row, column=1).font = small_font
+ws6.cell(row=row, column=3, value='> 20 В')
+ws6.cell(row=row, column=3).fill = ok_fill
+ws6.cell(row=row, column=3).alignment = center
+ws6.cell(row=row, column=3).border = border_all
+ws6.cell(row=row, column=4, value='< 20 В')
+ws6.cell(row=row, column=4).fill = warn_fill
+ws6.cell(row=row, column=4).alignment = center
+ws6.cell(row=row, column=4).border = border_all
+ws6.cell(row=row, column=5, value='< 18 В')
+ws6.cell(row=row, column=5).fill = crit_fill
+ws6.cell(row=row, column=5).font = Font(name='Arial', size=10, color='FFFFFF')
+ws6.cell(row=row, column=5).alignment = center
+ws6.cell(row=row, column=5).border = border_all
+
+# ═══════════════════════════════════════════════════════════════════
+# DETAILED BREAKDOWN (worst case)
+# ═══════════════════════════════════════════════════════════════════
+row += 2
+ws6.merge_cells(f'A{row}:F{row}')
+ws6.cell(row=row, column=1,
+    value='ДЕТАЛЬНЫЙ РАСЧЁТ — НАИХУДШИЙ СЛУЧАЙ (150 мА, 65°C)')
+ws6.cell(row=row, column=1).font = sub_header_font
+ws6.cell(row=row, column=1).fill = PatternFill(start_color='FFC000',
+    end_color='FFC000', fill_type='solid')
+ws6.cell(row=row, column=1).alignment = center
+for c in range(1, 7):
+    ws6.cell(row=row, column=c).border = border_all
+
+# Calculate worst case
+I_tx_w = 0.150
+I_cab9_w = 2 * I_tx_w
+rho_65 = rho_20 * (1 + alpha_cu * 45)
+R9_w = rho_65 * 250 / 1.5
+R3_w = rho_65 * 15 / 1.5
+dU_cab9_w = 2 * R9_w * I_cab9_w
+dU_cab3_w = 2 * R3_w * I_tx_w
+V_connbox_w = 24.0 - dU_cab9_w
+V_T1_w = 24.0 - dU_cab9_w - dU_cab3_w
+P_cab9_w = dU_cab9_w * I_cab9_w
+P_cab3_w = dU_cab3_w * I_tx_w
+
+detail_rows = [
+    ('Ток одного трансмиттера', f'{I_tx_w*1000:.0f} мА'),
+    ('Суммарный ток в Cable 9 (оба трансмиттера)', f'{I_cab9_w*1000:.0f} мА'),
+    ('R(Cable 9) при 65°C — одна жила', f'{R9_w:.3f} Ом'),
+    ('R(Cable 9) при 65°C — петля (туда+обратно)', f'{2*R9_w:.3f} Ом'),
+    ('R(Cable 3/4) при 65°C — петля', f'{2*R3_w:.3f} Ом'),
+    ('', ''),
+    ('ΔU на Cable 9 (250 м)', f'{dU_cab9_w:.2f} В'),
+    ('ΔU на Cable 3/4 (15 м)', f'{dU_cab3_w:.2f} В'),
+    ('ИТОГО падение напряжения', f'{dU_cab9_w + dU_cab3_w:.2f} В  ({(dU_cab9_w + dU_cab3_w)/24*100:.1f}%)'),
+    ('', ''),
+    ('V на Connection Box', f'{V_connbox_w:.2f} В'),
+    ('V НА ТРАНСМИТТЕРЕ', f'{V_T1_w:.2f} В'),
+    ('', ''),
+    ('Мощность потерь в Cable 9', f'{P_cab9_w:.2f} Вт'),
+    ('Мощность потерь в Cable 3/4', f'{P_cab3_w:.3f} Вт'),
+    ('Суммарные тепловые потери', f'{P_cab9_w + P_cab3_w:.2f} Вт'),
+]
+
+for (label, val) in detail_rows:
+    row += 1
+    ws6.cell(row=row, column=1, value=label)
+    ws6.merge_cells(f'B{row}:F{row}')
+    ws6.cell(row=row, column=2, value=val)
+    font = sub_header_font if 'ИТОГО' in label or 'НА ТРАНСМИТТЕРЕ' in label else normal_font
+    fill_d = error_fill if 'ИТОГО' in label or 'НА ТРАНСМИТТЕРЕ' in label else white_fill
+    ws6.cell(row=row, column=1).font = font
+    ws6.cell(row=row, column=1).alignment = left_wrap
+    ws6.cell(row=row, column=2).font = font
+    ws6.cell(row=row, column=2).alignment = center
+    if label:
+        for c in range(1, 7):
+            ws6.cell(row=row, column=c).border = border_all
+        ws6.cell(row=row, column=1).fill = fill_d
+        ws6.cell(row=row, column=2).fill = fill_d
+
+# ═══════════════════════════════════════════════════════════════════
+# RECOMMENDATIONS
+# ═══════════════════════════════════════════════════════════════════
+row += 2
+ws6.merge_cells(f'A{row}:F{row}')
+ws6.cell(row=row, column=1, value='РЕКОМЕНДАЦИИ / RECOMMENDATIONS')
+ws6.cell(row=row, column=1).font = title_font
+ws6.cell(row=row, column=1).fill = sub_header_fill
+ws6.cell(row=row, column=1).alignment = center
+for c in range(1, 7):
+    ws6.cell(row=row, column=c).border = border_all
+
+recommendations = [
+    ('1. Увеличить сечение Cable 9 до 2.5 мм²',
+     f'V на трансмиттере (65°C, 150мА)',
+     round(24.0 - 2 * (rho_65 * 250 / 2.5) * I_cab9_w - dU_cab3_w, 2)),
+    ('2. Повысить напряжение источника до 27 В',
+     f'V на трансмиттере (65°C, 150мА)',
+     round(V_T1_w + 3, 2)),
+    ('3. Сократить Cable 9 до 100 м (перенести SCADA box)',
+     f'V на трансмиттере (65°C, 150мА)',
+     round(24.0 - 2 * (rho_65 * 100 / 1.5) * I_cab9_w - dU_cab3_w, 2)),
+    ('4. Отдельный БП 24VDC у Connection Box',
+     f'V на трансмиттере (без Cable 9)',
+     round(24.0 - dU_cab3_w, 2)),
+]
+
+row += 1
+for i, h in enumerate(['Рекомендация', 'Параметр', 'V, В',
+                        'Падение, В', 'Статус'], 1):
+    ws6.cell(row=row, column=i, value=h)
+style_header_row(ws6, row, 1, 5)
+
+for (rec, param, v_result) in recommendations:
+    row += 1
+    ws6.cell(row=row, column=1, value=rec)
+    ws6.cell(row=row, column=1).font = normal_font
+    ws6.cell(row=row, column=1).alignment = left_wrap
+    ws6.cell(row=row, column=2, value=param)
+    ws6.cell(row=row, column=2).font = small_font
+    ws6.cell(row=row, column=2).alignment = left_wrap
+    ws6.cell(row=row, column=3, value=v_result)
+    ws6.cell(row=row, column=3).font = Font(name='Arial', size=11, bold=True)
+    ws6.cell(row=row, column=3).alignment = center
+    ws6.cell(row=row, column=3).fill = ok_fill
+    ws6.cell(row=row, column=4, value=round(24.0 - v_result, 2))
+    ws6.cell(row=row, column=4).font = normal_font
+    ws6.cell(row=row, column=4).alignment = center
+    ws6.cell(row=row, column=5, value='OK')
+    ws6.cell(row=row, column=5).font = Font(name='Arial', size=11, bold=True,
+                                              color='006100')
+    ws6.cell(row=row, column=5).fill = ok_fill
+    ws6.cell(row=row, column=5).alignment = center
+    for c in range(1, 6):
+        ws6.cell(row=row, column=c).border = border_all
+    ws6.row_dimensions[row].height = 30
+
+
 # ── Print setup ────────────────────────────────────────────────────
-for ws in [ws1, ws2, ws3, ws4, ws5]:
+for ws in [ws1, ws2, ws3, ws4, ws5, ws6]:
     ws.sheet_properties.pageSetUpPr = openpyxl.worksheet.properties.PageSetupProperties(
         fitToPage=True)
     ws.page_setup.fitToWidth = 1
