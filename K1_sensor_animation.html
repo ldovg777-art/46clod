@@ -202,18 +202,25 @@ for(let i=0;i<10;i++) eArrows.push({p:i/10});
 class Ion{
   constructor(tp){this.tp=tp;this.spawn()}
   spawn(){
-    // Keep trying until we get a position away from bridge and WE body
-    for(let tries=0;tries<20;tries++){
-      this.x=WX1+30+Math.random()*(WX2-WX1-60);
-      this.y=SY1+30+Math.random()*(SY2-SY1-60);
-      const nearBridge=Math.abs(this.x-RE.bridgeTipX)<30&&this.y>SY1&&this.y<RE.bridgeTipY+10;
-      const nearWEbody=Math.abs(this.x-WE.x)<16&&this.y<WE.tipY-20&&this.y>SY1;
-      if(!nearBridge&&!nearWEbody) break;
+    // Reactive ions: spawn in active zone (right side, closer to WE)
+    // Non-reactive: anywhere in solution except near obstacles
+    for(let tries=0;tries<30;tries++){
+      if(this.isReactive()){
+        // Spawn in the right portion of the solution — clear path to WE
+        this.x = RE.bridgeTipX + 40 + Math.random() * (WX2 - RE.bridgeTipX - 70);
+        this.y = SY1 + 60 + Math.random() * (SY2 - SY1 - 80);
+      } else {
+        this.x = WX1 + 30 + Math.random() * (WX2 - WX1 - 60);
+        this.y = SY1 + 30 + Math.random() * (SY2 - SY1 - 60);
+      }
+      const nearBridge = Math.abs(this.x - RE.bridgeTipX) < 14 && this.y > SY1 && this.y < RE.bridgeTipY + 10;
+      const nearWEbody = Math.abs(this.x - WE.x) < 12 && this.y < WE.tipY - 20 && this.y > SY1;
+      if(!nearBridge && !nearWEbody) break;
     }
-    this.vx=(Math.random()-.5)*.3;
-    this.vy=(Math.random()-.5)*.3;
-    this.ph=Math.random()*6.28;
-    this.dead=false; this.fade=1; this.fading=false; this.ft=0;
+    this.vx = (Math.random() - .5) * .3;
+    this.vy = (Math.random() - .5) * .3;
+    this.ph = Math.random() * 6.28;
+    this.dead = false; this.fade = 1; this.fading = false; this.ft = 0;
   }
   isReactive(){
     return (mode==='acid'&&this.tp==='H+')||(mode==='ammonia'&&this.tp==='OH-');
@@ -282,26 +289,18 @@ class Ion{
     if(this.y<SY1+m){this.y=SY1+m;this.vy=Math.abs(this.vy)*.5}
     if(this.y>SY2-m){this.y=SY2-m;this.vy=-Math.abs(this.vy)*.5}
 
-    // ── Repulsion from WE body (tube, not tip) ──
-    if(Math.abs(this.x-WE.x)<22&&this.y<WE.tipY-15&&this.y>SY1+10){
-      const repX=(this.x-WE.x);
-      const repForce=1.5/Math.max(Math.abs(repX),2);
-      this.vx+=(repX>0?1:-1)*repForce;
+    // ── Hard collision with WE body (tube, not tip) ──
+    if(Math.abs(this.x-WE.x)<12&&this.y<WE.tipY-10&&this.y>SY1+10){
+      this.x=WE.x+(this.x<WE.x?-12:12);
+      this.vx=(this.x<WE.x?-1:1)*Math.abs(this.vx)*.5;
     }
 
-    // ── Strong repulsion from electrolytic bridge tube ──
-    // Bridge runs vertically from ~SY1 down to bridgeTipY at x=bridgeTipX
-    if(this.y>SY1&&this.y<RE.bridgeTipY+15){
-      const bDx=this.x-RE.bridgeTipX;
-      const absDx=Math.abs(bDx);
-      if(absDx<35){
-        // Strong lateral push away from bridge — stronger when closer
-        const repForce=2.0/Math.max(absDx,3);
-        this.vx+=(bDx>0?1:-1)*repForce;
-        // Also slight vertical push away from bridge tip
-        if(Math.abs(this.y-RE.bridgeTipY)<20){
-          this.vy+=(this.y>RE.bridgeTipY?1:-1)*0.5;
-        }
+    // ── Hard collision with electrolytic bridge tube (thin, ~12px) ──
+    if(this.y>SY1-5&&this.y<RE.bridgeTipY+8){
+      if(Math.abs(this.x-RE.bridgeTipX)<10){
+        this.x=RE.bridgeTipX+(this.x<RE.bridgeTipX?-10:10);
+        this.vx=(this.x<RE.bridgeTipX?-1:1)*Math.abs(this.vx)*.3+
+                (this.x<RE.bridgeTipX?-0.3:0.3);
       }
     }
   }
