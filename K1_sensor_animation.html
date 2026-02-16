@@ -133,9 +133,15 @@ let mode='acid', potential=750, spd=5, tick=0;
 const WX1=120, WX2=620; // wall inner edges
 const WT=20;             // wall thickness
 const SY1=80, SY2=570;  // solution top/bottom
-const WE={x:420, tipY:465, topY:55};  // working electrode
-const RE={x:260, tipY:440, bodyX:260, bodyTop:280, bodyBot:450, bulbR:14}; // reference - BIG
-const PB={x:700, y:60, w:110, h:80};  // potentiostat box
+const WE={x:400, tipY:475, topY:55};  // working electrode
+// Reference electrode is OUTSIDE the apparatus (above the wall)
+// Only the electrolytic bridge goes through the wall INTO the solution
+const RE={
+  bulbX:280, bulbY:38, bulbR:16,   // Ag/AgCl bulb — OUTSIDE, above wall
+  bridgeEntryY:62,                    // bridge enters sensor body here
+  bridgeTipX:280, bridgeTipY:460     // bridge tip — INSIDE solution, near bottom
+};
+const PB={x:720, y:55, w:110, h:80};  // potentiostat box
 
 // ── Ions ──
 let ions=[], bubbles=[], eArrows=[];
@@ -182,8 +188,9 @@ class Ion{
     if(Math.abs(this.x-WE.x)<10&&this.y<WE.tipY&&this.y>SY1+20){
       this.x+=(this.x<WE.x?-1:1)*2;
     }
-    if(Math.abs(this.x-RE.bodyX)<14&&this.y>RE.bodyTop&&this.y<RE.bodyBot){
-      this.x+=(this.x<RE.bodyX?-1:1)*2;
+    // avoid electrolytic bridge tube inside solution
+    if(Math.abs(this.x-RE.bridgeTipX)<10&&this.y>SY1+20&&this.y<RE.bridgeTipY){
+      this.x+=(this.x<RE.bridgeTipX?-1:1)*2;
     }
     // react at WE tip
     if(d<22){
@@ -289,12 +296,12 @@ function drawWorkingElectrode(){
   // Sensor body (ceramic/PTFE)
   const bg=X.createLinearGradient(WE.x-7,0,WE.x+7,0);
   bg.addColorStop(0,'#7a7a6a');bg.addColorStop(.5,'#a8a898');bg.addColorStop(1,'#7a7a6a');
-  X.fillStyle=bg;X.fillRect(WE.x-7,62,14,390);
+  X.fillStyle=bg;X.fillRect(WE.x-7,62,14,400);
   // Shell ring
   X.fillStyle='#999';X.fillRect(WE.x-9,95,18,6);
   // Working wire sticking out from bottom
   X.strokeStyle='#e0c830';X.lineWidth=3.5;X.lineCap='round';
-  X.beginPath();X.moveTo(WE.x,452);X.lineTo(WE.x,WE.tipY+2);X.stroke();
+  X.beginPath();X.moveTo(WE.x,462);X.lineTo(WE.x,WE.tipY+2);X.stroke();
   // Tip ball
   X.fillStyle='#f0d840';
   X.beginPath();X.arc(WE.x,WE.tipY+2,6,0,6.28);X.fill();
@@ -324,61 +331,88 @@ function drawWorkingElectrode(){
 }
 
 function drawReferenceElectrode(){
-  // ═══ LARGE, CLEARLY VISIBLE reference electrode ═══
+  // ═══ REFERENCE ELECTRODE — OUTSIDE the apparatus ═══
+  // Per K1 Technical Description Fig.1:
+  //   Ag/AgCl bulb sits on the sensor body ABOVE the apparatus wall.
+  //   Electrolytic bridge tube goes from it DOWN THROUGH the wall
+  //   into the solution.
 
-  // Electrolytic bridge tube (from sensor body to reference bulb)
-  X.strokeStyle='#6699aa';X.lineWidth=10;X.lineCap='round';
+  const bx=RE.bulbX, by=RE.bulbY, br=RE.bulbR;
+  const tipX=RE.bridgeTipX, tipY=RE.bridgeTipY;
+
+  // ── 1. Electrolytic bridge: tube going from outside DOWN into solution ──
+  // Outer tube wall
+  X.strokeStyle='#5588aa';X.lineWidth=12;X.lineCap='round';X.lineJoin='round';
   X.beginPath();
-  X.moveTo(WE.x-7, 320);
-  X.lineTo(RE.bodyX+20, 320);
-  X.lineTo(RE.bodyX, 340);
-  X.lineTo(RE.bodyX, RE.tipY-RE.bulbR);
+  X.moveTo(bx, by+br);          // from bulb bottom (OUTSIDE)
+  X.lineTo(bx, SY1-5);          // down to wall/solution surface
+  X.lineTo(tipX, SY1-5);        // along wall gap (if offset)
+  X.lineTo(tipX, tipY);         // down into solution to tip
   X.stroke();
-  // Bridge inner filling (dashed = mineral stuffing)
-  X.strokeStyle='rgba(140,180,200,.4)';X.lineWidth=5;X.setLineDash([4,5]);
+  // Inner filling — dashed (mineral stuffing + saturated NH4NO3)
+  X.strokeStyle='rgba(130,180,210,.35)';X.lineWidth=6;X.setLineDash([5,5]);
   X.beginPath();
-  X.moveTo(WE.x-7, 320);
-  X.lineTo(RE.bodyX+20, 320);
-  X.lineTo(RE.bodyX, 340);
-  X.lineTo(RE.bodyX, RE.tipY-RE.bulbR);
+  X.moveTo(bx, by+br);
+  X.lineTo(bx, SY1-5);
+  X.lineTo(tipX, SY1-5);
+  X.lineTo(tipX, tipY);
   X.stroke();
   X.setLineDash([]);
 
-  // Bridge label
-  X.fillStyle='rgba(100,160,190,.7)';X.font='9px sans-serif';X.textAlign='center';
-  X.fillText('Electrolytic bridge',RE.bodyX-10,312);
-  X.fillText('(mineral stuffing + NH\u2084NO\u2083 sat.)',RE.bodyX-10,323);
+  // Bridge tip opening in solution (where ionic contact happens)
+  X.fillStyle='#88bbdd';
+  X.beginPath();X.arc(tipX, tipY, 5, 0, 6.28);X.fill();
+  X.strokeStyle='#5588aa';X.lineWidth=1.5;X.stroke();
 
-  // Reference electrode bulb (Ag/AgCl) — big and visible
-  const bx=RE.bodyX, by=RE.tipY, br=RE.bulbR;
-  // Outer glass bulb
-  X.fillStyle='rgba(180,200,210,.15)';
+  // Bridge label inside solution
+  X.strokeStyle='#5588aa88';X.lineWidth=1;X.setLineDash([3,3]);
+  X.beginPath();X.moveTo(tipX+6,tipY);X.lineTo(tipX+45,tipY+12);X.stroke();
+  X.setLineDash([]);
+  X.fillStyle='#88bbdd';X.font='9px sans-serif';X.textAlign='left';
+  X.fillText('Bridge tip',tipX+47,tipY+10);
+  X.fillText('(ionic contact)',tipX+47,tipY+22);
+
+  // Label on the bridge tube (inside solution part)
+  X.save();
+  X.fillStyle='rgba(100,170,210,.6)';X.font='9px sans-serif';X.textAlign='center';
+  X.translate(tipX-12, (SY1+tipY)/2);
+  X.rotate(-Math.PI/2);
+  X.fillText('Electrolytic bridge (mineral stuffing)',0,0);
+  X.restore();
+
+  // ── 2. Ag/AgCl bulb — OUTSIDE, above apparatus wall ──
+  // Glass housing
+  X.fillStyle='rgba(180,210,230,.2)';
   X.strokeStyle='#88aacc';X.lineWidth=2.5;
   X.beginPath();X.arc(bx,by,br,0,6.28);X.fill();X.stroke();
-  // Inner silver wire
-  X.fillStyle='#d0d0d0';
-  X.beginPath();X.arc(bx,by,5,0,6.28);X.fill();
-  X.fillStyle='#aaa';
-  X.beginPath();X.arc(bx,by,3,0,6.28);X.fill();
-  // "Ag" label inside
-  X.fillStyle='#fff';X.font='bold 8px sans-serif';X.textAlign='center';X.textBaseline='middle';
+  // Silver chloride inner
+  X.fillStyle='#c8c8c8';
+  X.beginPath();X.arc(bx,by,7,0,6.28);X.fill();
+  // Silver wire core
+  X.fillStyle='#e0e0e0';
+  X.beginPath();X.arc(bx,by,3.5,0,6.28);X.fill();
+  // "Ag" label
+  X.fillStyle='#fff';X.font='bold 9px sans-serif';X.textAlign='center';X.textBaseline='middle';
   X.fillText('Ag',bx,by);
   X.textBaseline='alphabetic';
 
-  // Label with line
+  // ── 3. Label box for reference electrode (OUTSIDE) ──
   X.strokeStyle='#88aacc';X.lineWidth=1;X.setLineDash([3,3]);
-  X.beginPath();X.moveTo(bx-br-2,by);X.lineTo(bx-br-40,by+15);X.stroke();
+  X.beginPath();X.moveTo(bx-br-2,by);X.lineTo(bx-br-30,by+5);X.stroke();
   X.setLineDash([]);
 
-  // Big clear label box
-  const lbx=bx-br-145, lby=by+2;
-  X.fillStyle='rgba(10,20,35,.9)';X.strokeStyle='#88aacc';X.lineWidth=1.5;
-  roundRect(lbx,lby,100,42,5);X.fill();X.stroke();
-  X.fillStyle='#aaccee';X.font='bold 11px sans-serif';X.textAlign='center';
-  X.fillText('REFERENCE',lbx+50,lby+14);
-  X.fillText('ELECTRODE',lbx+50,lby+27);
-  X.fillStyle='#7799aa';X.font='9px sans-serif';
-  X.fillText('Ag/AgCl',lbx+50,lby+39);
+  const lbx=bx-br-140, lby=by-12;
+  X.fillStyle='rgba(8,16,30,.92)';X.strokeStyle='#88aacc';X.lineWidth=2;
+  roundRect(lbx,lby,105,50,5);X.fill();X.stroke();
+  X.fillStyle='#aaddff';X.font='bold 12px sans-serif';X.textAlign='center';
+  X.fillText('REFERENCE',lbx+52,lby+16);
+  X.fillText('ELECTRODE',lbx+52,lby+31);
+  X.fillStyle='#88aacc';X.font='10px sans-serif';
+  X.fillText('Ag/AgCl',lbx+52,lby+45);
+
+  // "OUTSIDE" indicator
+  X.fillStyle='#668899';X.font='italic 8px sans-serif';X.textAlign='center';
+  X.fillText('(outside apparatus)',bx,by+br+12);
 }
 
 function drawBubbles(){
@@ -442,11 +476,13 @@ function drawCircuit(){
   X.beginPath();X.moveTo(P.x,P.y+18);X.lineTo(WE.x+10,P.y+18);X.lineTo(WE.x+10,35);X.stroke();
   pill(P.x-3,P.y+13,'WE','#e0c830');
 
-  // RE wire (blue-gray)
+  // RE wire (blue-gray) — goes to Ag/AgCl bulb which is OUTSIDE
   X.strokeStyle='#6699aa';X.lineWidth=2;
-  X.beginPath();X.moveTo(P.x,P.y+40);X.lineTo(RE.bodyX-14,P.y+40);X.lineTo(RE.bodyX-14,62);X.stroke();
-  // Connect to bridge entry on sensor body
-  X.beginPath();X.moveTo(RE.bodyX-14,62);X.lineTo(RE.bodyX-14,320);X.lineTo(WE.x-7,320);X.stroke();
+  X.beginPath();
+  X.moveTo(P.x,P.y+40);
+  X.lineTo(RE.bulbX+RE.bulbR+5,P.y+40);
+  X.lineTo(RE.bulbX+RE.bulbR+5,RE.bulbY);
+  X.stroke();
   pill(P.x-3,P.y+35,'RE','#88aacc');
 
   // SE wire (gray) to wall
@@ -523,6 +559,16 @@ function drawIonicCurrent(){
 function drawInfo(){
   X.fillStyle='#7eb8ff';X.font='bold 13px sans-serif';X.textAlign='left';
   X.fillText('Sensor DK-3S \u2014 Electrochemical Cell (cross-section)',15,22);
+
+  // Zone labels: OUTSIDE vs INSIDE apparatus
+  X.fillStyle='rgba(100,140,180,.3)';X.font='bold 10px sans-serif';X.textAlign='center';
+  X.fillText('OUTSIDE APPARATUS',(WX1+WX2)/2, SY1-22);
+  // Dashed line at solution surface
+  X.strokeStyle='rgba(100,140,180,.25)';X.lineWidth=1;X.setLineDash([6,4]);
+  X.beginPath();X.moveTo(WX1,SY1-12);X.lineTo(WX2,SY1-12);X.stroke();
+  X.setLineDash([]);
+  X.fillStyle='rgba(100,140,180,.2)';
+  X.fillText('INSIDE — NH\u2084NO\u2083 Solution',(WX1+WX2)/2, SY1+8);
 
   // Mode box at bottom of solution
   const conc=Math.abs(potential-600)/300;
