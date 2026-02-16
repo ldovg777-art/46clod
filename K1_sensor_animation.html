@@ -150,8 +150,14 @@ for(let i=0;i<10;i++) eArrows.push({p:i/10});
 class Ion{
   constructor(tp){this.tp=tp;this.spawn()}
   spawn(){
-    this.x=WX1+30+Math.random()*(WX2-WX1-60);
-    this.y=SY1+30+Math.random()*(SY2-SY1-60);
+    // Keep trying until we get a position away from bridge and WE body
+    for(let tries=0;tries<20;tries++){
+      this.x=WX1+30+Math.random()*(WX2-WX1-60);
+      this.y=SY1+30+Math.random()*(SY2-SY1-60);
+      const nearBridge=Math.abs(this.x-RE.bridgeTipX)<30&&this.y>SY1&&this.y<RE.bridgeTipY+10;
+      const nearWEbody=Math.abs(this.x-WE.x)<16&&this.y<WE.tipY-20&&this.y>SY1;
+      if(!nearBridge&&!nearWEbody) break;
+    }
     this.vx=(Math.random()-.5)*.3;
     this.vy=(Math.random()-.5)*.3;
     this.ph=Math.random()*6.28;
@@ -167,31 +173,39 @@ class Ion{
     this.ph+=.04;
 
     if(this.isReactive()){
-      // ── REACTIVE IONS: strong directed migration toward WE tip ──
+      // ── REACTIVE IONS: directed migration toward WE tip ──
       const dx=WE.x-this.x, dy=WE.tipY-this.y, d=Math.sqrt(dx*dx+dy*dy);
       const nx=dx/(d+1), ny=dy/(d+1); // normalized direction
 
-      // Strong attraction force — increases with concentration, stronger when closer
-      // Electric field force: proportional to conc, inversely to distance
-      const fBase = 0.04 + conc * 0.12; // base force: significant pull
-      const fDist = fBase * s / Math.max(d * 0.15, 1); // stronger when closer
-      this.vx += nx * fDist;
-      this.vy += ny * fDist;
+      // Attraction force toward WE tip:
+      //  - Far away (d>150): moderate constant pull to get ions moving
+      //  - Medium range: steady migration
+      //  - Close (d<60): ions accumulate — reduce force so they cluster
+      let fMag;
+      if(d > 150){
+        fMag = (0.03 + conc * 0.06) * s; // pull from far away
+      } else if(d > 60){
+        fMag = (0.04 + conc * 0.10) * s; // stronger in mid range
+      } else {
+        // Near WE: reduced force — ions slow down and concentrate here
+        fMag = (0.015 + conc * 0.03) * s;
+      }
+      this.vx += nx * fMag;
+      this.vy += ny * fMag;
 
-      // Small random component (thermal noise) — much less than directed force
-      this.vx += (Math.random()-.5) * .04 * s;
-      this.vy += (Math.random()-.5) * .04 * s;
+      // Small random component (thermal noise)
+      this.vx += (Math.random()-.5) * .03 * s;
+      this.vy += (Math.random()-.5) * .03 * s;
 
-      // Damping — allow faster movement
-      this.vx *= .93; this.vy *= .93;
+      // Damping
+      this.vx *= .92; this.vy *= .92;
       this.x += this.vx * s * .5; this.y += this.vy * s * .5;
 
-      // React at WE tip — high probability when close
-      if(d < 28){
-        const reactProb = 0.06 + conc * 0.12; // much higher reaction rate
+      // React at WE tip — only very close to the gold ball
+      if(d < 18){
+        const reactProb = 0.03 + conc * 0.06;
         if(Math.random() < reactProb){
           this.fading = true; this.ft = 20;
-          // Spawn 2-3 bubbles per reaction (more dramatic)
           const nb = 2 + Math.floor(Math.random() * 2);
           for(let b=0; b<nb; b++){
             mkBubble(WE.x + (Math.random()-.5)*16, WE.tipY - 5 - Math.random()*10, mode==='acid');
@@ -215,13 +229,28 @@ class Ion{
     if(this.x>WX2-m){this.x=WX2-m;this.vx=-Math.abs(this.vx)*.5}
     if(this.y<SY1+m){this.y=SY1+m;this.vy=Math.abs(this.vy)*.5}
     if(this.y>SY2-m){this.y=SY2-m;this.vy=-Math.abs(this.vy)*.5}
-    // avoid electrode bodies
-    if(Math.abs(this.x-WE.x)<10&&this.y<WE.tipY&&this.y>SY1+20){
-      this.x+=(this.x<WE.x?-1:1)*2;
+
+    // ── Repulsion from WE body (tube, not tip) ──
+    if(Math.abs(this.x-WE.x)<22&&this.y<WE.tipY-15&&this.y>SY1+10){
+      const repX=(this.x-WE.x);
+      const repForce=1.5/Math.max(Math.abs(repX),2);
+      this.vx+=(repX>0?1:-1)*repForce;
     }
-    // avoid electrolytic bridge tube inside solution
-    if(Math.abs(this.x-RE.bridgeTipX)<10&&this.y>SY1+20&&this.y<RE.bridgeTipY){
-      this.x+=(this.x<RE.bridgeTipX?-1:1)*2;
+
+    // ── Strong repulsion from electrolytic bridge tube ──
+    // Bridge runs vertically from ~SY1 down to bridgeTipY at x=bridgeTipX
+    if(this.y>SY1&&this.y<RE.bridgeTipY+15){
+      const bDx=this.x-RE.bridgeTipX;
+      const absDx=Math.abs(bDx);
+      if(absDx<35){
+        // Strong lateral push away from bridge — stronger when closer
+        const repForce=2.0/Math.max(absDx,3);
+        this.vx+=(bDx>0?1:-1)*repForce;
+        // Also slight vertical push away from bridge tip
+        if(Math.abs(this.y-RE.bridgeTipY)<20){
+          this.vy+=(this.y>RE.bridgeTipY?1:-1)*0.5;
+        }
+      }
     }
   }
   draw(){
