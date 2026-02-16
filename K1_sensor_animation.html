@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DK-3S Concentration Sensor — Electrochemical Measurement Animation</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0e1a;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    overflow-x: hidden;
+  }
+
+  .header {
+    text-align: center;
+    padding: 18px 20px 10px;
+    background: linear-gradient(135deg, #0d1525, #162040);
+    border-bottom: 2px solid #2a3a5c;
+  }
+  .header h1 {
+    font-size: 20px;
+    color: #7eb8ff;
+    letter-spacing: 1px;
+  }
+  .header h2 {
+    font-size: 13px;
+    color: #8899bb;
+    font-weight: 400;
+    margin-top: 4px;
+  }
+
+  .main-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    padding: 16px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .canvas-wrap {
+    background: #0f1520;
+    border: 1px solid #2a3a5c;
+    border-radius: 8px;
+    padding: 8px;
+    flex: 1 1 820px;
+    max-width: 880px;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    border-radius: 4px;
+  }
+
+  .panel {
+    flex: 0 1 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .card {
+    background: #111828;
+    border: 1px solid #2a3a5c;
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .card h3 {
+    font-size: 13px;
+    color: #7eb8ff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #1e2a44;
+    padding-bottom: 6px;
+  }
+
+  .mode-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 8px;
+    border: 2px solid #2a3a5c;
+    border-radius: 6px;
+    background: #0d1525;
+    color: #c0c8d8;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: left;
+  }
+  .mode-btn:hover { border-color: #4a6a9c; background: #162040; }
+  .mode-btn.active-acid {
+    border-color: #ff6644;
+    background: linear-gradient(135deg, #1a0800, #2a1008);
+    color: #ff9977;
+  }
+  .mode-btn.active-ammonia {
+    border-color: #44aaff;
+    background: linear-gradient(135deg, #000818, #081a2a);
+    color: #77ccff;
+  }
+  .mode-btn .mode-title {
+    font-weight: 700;
+    font-size: 14px;
+    display: block;
+    margin-bottom: 3px;
+  }
+  .mode-btn .mode-desc {
+    font-size: 11px;
+    opacity: 0.7;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .slider-row label {
+    font-size: 12px;
+    color: #8899bb;
+    min-width: 100px;
+  }
+  .slider-row input[type=range] {
+    flex: 1;
+    accent-color: #5588cc;
+    height: 6px;
+  }
+  .slider-row .val {
+    font-size: 12px;
+    font-family: monospace;
+    color: #aabbdd;
+    min-width: 50px;
+    text-align: right;
+  }
+
+  .readout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .readout-item {
+    background: #0a0e1a;
+    border: 1px solid #1e2a44;
+    border-radius: 6px;
+    padding: 8px;
+    text-align: center;
+  }
+  .readout-item .r-label {
+    font-size: 10px;
+    color: #667799;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .readout-item .r-value {
+    font-size: 18px;
+    font-weight: 700;
+    font-family: monospace;
+    margin-top: 2px;
+  }
+  .r-acid { color: #ff7755; }
+  .r-ammonia { color: #55aaff; }
+  .r-potential { color: #ffcc44; }
+  .r-current { color: #66ee88; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #8899bb;
+  }
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .reactions {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    color: #99aabb;
+  }
+  .reactions .active-rxn {
+    color: #ffdd66;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>DK-3S Concentration Sensor &mdash; Electrochemical Measurement</h1>
+  <h2>DEEPAK K1 &bull; Ammonium Nitrate Production &bull; HNO&#8323; + NH&#8323; &rarr; NH&#8324;NO&#8323;</h2>
+</div>
+
+<div class="main-container">
+  <div class="canvas-wrap">
+    <canvas id="c" width="860" height="620"></canvas>
+  </div>
+
+  <div class="panel">
+    <!-- Mode -->
+    <div class="card">
+      <h3>Measurement Mode</h3>
+      <button class="mode-btn active-acid" id="btnAcid" onclick="setMode('acid')">
+        <span class="mode-title">Excess HNO&#8323; (Acid)</span>
+        <span class="mode-desc">H&#8314; reduction on working electrode &rarr; cathodic current</span>
+      </button>
+      <button class="mode-btn" id="btnAmmonia" onclick="setMode('ammonia')">
+        <span class="mode-title">Excess NH&#8323; (Ammonia)</span>
+        <span class="mode-desc">OH&#8315; oxidation on working electrode &rarr; anodic current</span>
+      </button>
+    </div>
+
+    <!-- Concentration -->
+    <div class="card">
+      <h3>Parameters</h3>
+      <div class="slider-row">
+        <label>Concentration:</label>
+        <input type="range" id="slConc" min="1" max="100" value="50" oninput="updateParams()">
+        <span class="val" id="valConc">2.5%</span>
+      </div>
+      <div class="slider-row">
+        <label>Temperature:</label>
+        <input type="range" id="slTemp" min="20" max="95" value="60" oninput="updateParams()">
+        <span class="val" id="valTemp">60 &deg;C</span>
+      </div>
+      <div class="slider-row">
+        <label>Speed:</label>
+        <input type="range" id="slSpeed" min="1" max="10" value="5" oninput="updateParams()">
+        <span class="val" id="valSpeed">5x</span>
+      </div>
+    </div>
+
+    <!-- Readouts -->
+    <div class="card">
+      <h3>Transmitter Output</h3>
+      <div class="readout">
+        <div class="readout-item">
+          <div class="r-label">Concentration</div>
+          <div class="r-value" id="rConc">2.5 %</div>
+        </div>
+        <div class="readout-item">
+          <div class="r-label">Potential (E)</div>
+          <div class="r-value r-potential" id="rPot">-0.35 V</div>
+        </div>
+        <div class="readout-item">
+          <div class="r-label">Current (I)</div>
+          <div class="r-value r-current" id="rCur">8.5 mA</div>
+        </div>
+        <div class="readout-item">
+          <div class="r-label">Output QS1</div>
+          <div class="r-value" id="rOut" style="color:#dd88ff">12.4 mA</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reactions -->
+    <div class="card">
+      <h3>Electrode Reactions</h3>
+      <div class="reactions" id="rxnBox">
+        <div id="rxn1" class="active-rxn">Cathode: 2H&#8314; + 2e&#8315; &rarr; H&#8322;&uarr;</div>
+        <div id="rxn2">Anode: 2OH&#8315; &rarr; O&#8322;&uarr; + H&#8322;O + 2e&#8315;</div>
+        <div style="margin-top:8px; font-size:11px; color:#667">
+          Working electrode &mdash; wire &empty;1.4 mm<br>
+          Reference &mdash; Ag/AgCl via electrolytic bridge<br>
+          Subsidiary &mdash; apparatus wall (steel)
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="card">
+      <h3>Legend</h3>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#ff5533"></div>H&#8314; (hydrogen ion)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#3399ff"></div>OH&#8315; (hydroxide ion)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#88cc44"></div>NH&#8324;&#8314; (ammonium)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff9922"></div>NO&#8323;&#8315; (nitrate)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ffee55"></div>e&#8315; (electron)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#bbbbbb; border:1px solid #666"></div>H&#8322; / O&#8322; bubble</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let mode = 'acid'; // 'acid' or 'ammonia'
+let concPct = 2.5;
+let tempC = 60;
+let speed = 5;
+let t = 0;
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// DPR scaling
+const dpr = window.devicePixelRatio || 1;
+const W = 860, H = 620;
+canvas.width = W * dpr;
+canvas.height = H * dpr;
+canvas.style.width = W + 'px';
+canvas.style.height = H + 'px';
+ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+// ═══════════════════════════════════════════════════════════════
+// PARTICLES
+// ═══════════════════════════════════════════════════════════════
+
+// Solution zone for ions: x 160..680, y 100..540
+const SOL_X1 = 170, SOL_X2 = 670, SOL_Y1 = 100, SOL_Y2 = 530;
+
+// Working electrode tip position
+const WE_X = 400, WE_TIP_Y = 420, WE_TOP_Y = 60;
+// Reference electrode
+const RE_X = 310, RE_TIP_Y = 380;
+// Apparatus wall
+const WALL_X1 = 145, WALL_X2 = 695;
+
+class Ion {
+  constructor(type) {
+    this.type = type; // 'H+', 'OH-', 'NH4+', 'NO3-'
+    this.reset();
+    this.y = SOL_Y1 + Math.random() * (SOL_Y2 - SOL_Y1);
+  }
+
+  reset() {
+    this.x = SOL_X1 + 20 + Math.random() * (SOL_X2 - SOL_X1 - 40);
+    this.y = SOL_Y1 + Math.random() * (SOL_Y2 - SOL_Y1);
+    this.vx = (Math.random() - 0.5) * 0.5;
+    this.vy = (Math.random() - 0.5) * 0.5;
+    this.phase = Math.random() * Math.PI * 2;
+    this.reacting = false;
+    this.reactTimer = 0;
+    this.alpha = 1;
+  }
+
+  update(dt) {
+    const spd = speed * 0.4;
+
+    if (this.reacting) {
+      this.reactTimer -= dt;
+      this.alpha = Math.max(0, this.reactTimer / 30);
+      if (this.reactTimer <= 0) {
+        this.reset();
+      }
+      return;
+    }
+
+    // Brownian motion
+    this.phase += dt * 0.05;
+    this.vx += (Math.random() - 0.5) * 0.15 * spd;
+    this.vy += (Math.random() - 0.5) * 0.15 * spd;
+
+    // Drift toward working electrode based on mode
+    const dxWE = WE_X - this.x;
+    const dyWE = WE_TIP_Y - this.y;
+    const distWE = Math.sqrt(dxWE * dxWE + dyWE * dyWE);
+
+    if (mode === 'acid' && this.type === 'H+') {
+      // H+ attracted to working electrode (cathode)
+      const force = concPct * 0.002 * spd / Math.max(distWE, 30);
+      this.vx += dxWE * force;
+      this.vy += dyWE * force;
+    } else if (mode === 'ammonia' && this.type === 'OH-') {
+      // OH- attracted to working electrode (anode)
+      const force = concPct * 0.002 * spd / Math.max(distWE, 30);
+      this.vx += dxWE * force;
+      this.vy += dyWE * force;
+    }
+
+    // Convection (gentle upward flow near heated solution)
+    this.vy -= 0.005 * spd * (tempC / 80);
+    this.vx += Math.sin(this.phase * 0.3 + this.y * 0.01) * 0.02 * spd;
+
+    // Damping
+    this.vx *= 0.97;
+    this.vy *= 0.97;
+
+    this.x += this.vx * dt * spd * 0.3;
+    this.y += this.vy * dt * spd * 0.3;
+
+    // Bounce off walls
+    if (this.x < SOL_X1 + 10) { this.x = SOL_X1 + 10; this.vx = Math.abs(this.vx); }
+    if (this.x > SOL_X2 - 10) { this.x = SOL_X2 - 10; this.vx = -Math.abs(this.vx); }
+    if (this.y < SOL_Y1 + 5) { this.y = SOL_Y1 + 5; this.vy = Math.abs(this.vy); }
+    if (this.y > SOL_Y2 - 5) { this.y = SOL_Y2 - 5; this.vy = -Math.abs(this.vy); }
+
+    // React at working electrode
+    if (distWE < 25) {
+      if ((mode === 'acid' && this.type === 'H+') ||
+          (mode === 'ammonia' && this.type === 'OH-')) {
+        if (Math.random() < 0.03 * concPct * 0.5) {
+          this.reacting = true;
+          this.reactTimer = 30;
+          spawnBubble(WE_X + (Math.random()-0.5)*10, WE_TIP_Y - 5);
+          spawnElectron();
+        }
+      }
+    }
+  }
+
+  draw() {
+    ctx.globalAlpha = this.alpha;
+    const r = this.type === 'NH4+' || this.type === 'NO3-' ? 5 : 4;
+    const colors = {
+      'H+': '#ff5533',
+      'OH-': '#3399ff',
+      'NH4+': '#88cc44',
+      'NO3-': '#ff9922'
+    };
+    const labels = {
+      'H+': 'H\u207A',
+      'OH-': 'OH\u207B',
+      'NH4+': 'NH\u2084\u207A',
+      'NO3-': 'NO\u2083\u207B'
+    };
+
+    // Glow
+    const grd = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, r * 3);
+    grd.addColorStop(0, colors[this.type] + '44');
+    grd.addColorStop(1, colors[this.type] + '00');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, r * 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Circle
+    ctx.fillStyle = colors[this.type];
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Label
+    if (r >= 4) {
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 7px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(labels[this.type], this.x, this.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+// Bubbles (H2 or O2)
+let bubbles = [];
+function spawnBubble(x, y) {
+  bubbles.push({
+    x: x + (Math.random()-0.5)*6,
+    y,
+    r: 2 + Math.random() * 3,
+    vy: -0.5 - Math.random() * 0.5,
+    alpha: 0.8
+  });
+}
+
+// Electrons flowing in wire
+let electrons = [];
+function spawnElectron() {
+  const fromWall = mode === 'acid';
+  electrons.push({
+    progress: 0,
+    fromWall,
+    speed: 0.008 + Math.random() * 0.005
+  });
+}
+
+// Current flow arrows along external circuit
+let currentArrows = [];
+for (let i = 0; i < 8; i++) {
+  currentArrows.push({ progress: i / 8 });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT IONS
+// ═══════════════════════════════════════════════════════════════
+let ions = [];
+
+function initIons() {
+  ions = [];
+  const nH = mode === 'acid' ? Math.round(20 + concPct * 4) : 8;
+  const nOH = mode === 'ammonia' ? Math.round(20 + concPct * 4) : 8;
+  const nNH4 = 25;
+  const nNO3 = 25;
+
+  for (let i = 0; i < nH; i++) ions.push(new Ion('H+'));
+  for (let i = 0; i < nOH; i++) ions.push(new Ion('OH-'));
+  for (let i = 0; i < nNH4; i++) ions.push(new Ion('NH4+'));
+  for (let i = 0; i < nNO3; i++) ions.push(new Ion('NO3-'));
+}
+initIons();
+
+// ═══════════════════════════════════════════════════════════════
+// DRAWING HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+function drawApparatusWall() {
+  // Outer wall (steel)
+  const wallT = 22;
+  ctx.fillStyle = '#3a3f4a';
+  ctx.fillRect(WALL_X1 - wallT, 60, wallT, 500);
+  ctx.fillRect(WALL_X2, 60, wallT, 500);
+
+  // Wall shading (3D effect)
+  let gL = ctx.createLinearGradient(WALL_X1 - wallT, 0, WALL_X1, 0);
+  gL.addColorStop(0, '#555d6a');
+  gL.addColorStop(0.4, '#3a3f4a');
+  gL.addColorStop(1, '#2a2f3a');
+  ctx.fillStyle = gL;
+  ctx.fillRect(WALL_X1 - wallT, 60, wallT, 500);
+
+  let gR = ctx.createLinearGradient(WALL_X2, 0, WALL_X2 + wallT, 0);
+  gR.addColorStop(0, '#2a2f3a');
+  gR.addColorStop(0.6, '#3a3f4a');
+  gR.addColorStop(1, '#555d6a');
+  ctx.fillStyle = gR;
+  ctx.fillRect(WALL_X2, 60, wallT, 500);
+
+  // Top/bottom flanges
+  ctx.fillStyle = '#4a5060';
+  ctx.fillRect(WALL_X1 - wallT - 5, 55, WALL_X2 - WALL_X1 + wallT * 2 + 10, 12);
+  ctx.fillRect(WALL_X1 - wallT - 5, 553, WALL_X2 - WALL_X1 + wallT * 2 + 10, 12);
+
+  // Labels
+  ctx.save();
+  ctx.fillStyle = '#8899aa';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.translate(WALL_X1 - wallT / 2 - 2, 310);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('APPARATUS WALL (subsidiary electrode)', 0, 0);
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = '#8899aa';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.translate(WALL_X2 + wallT / 2 + 2, 310);
+  ctx.rotate(Math.PI / 2);
+  ctx.fillText('APPARATUS WALL (subsidiary electrode)', 0, 0);
+  ctx.restore();
+}
+
+function drawSolution() {
+  // Solution background
+  const solColor = mode === 'acid'
+    ? `rgba(40, 15, 10, 0.85)`
+    : `rgba(10, 20, 40, 0.85)`;
+  ctx.fillStyle = solColor;
+  ctx.fillRect(WALL_X1, 67, WALL_X2 - WALL_X1, 486);
+
+  // Solution label
+  ctx.fillStyle = '#99887766';
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('NH\u2084NO\u2083 Solution', (WALL_X1 + WALL_X2)/2, 90);
+
+  // Convection streams (subtle)
+  ctx.strokeStyle = 'rgba(100,140,180,0.06)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    const cx = WALL_X1 + 80 + i * 110;
+    const phase = t * 0.001 * speed + i;
+    ctx.beginPath();
+    for (let y = SOL_Y1; y < SOL_Y2; y += 5) {
+      const dx = Math.sin(y * 0.02 + phase) * 15;
+      if (y === SOL_Y1) ctx.moveTo(cx + dx, y);
+      else ctx.lineTo(cx + dx, y);
+    }
+    ctx.stroke();
+  }
+}
+
+function drawWorkingElectrode() {
+  // Probe body (upper part going through solution surface)
+  ctx.fillStyle = '#666e7a';
+  ctx.fillRect(WE_X - 8, 30, 16, 80);
+
+  // Gland
+  ctx.fillStyle = '#555';
+  ctx.fillRect(WE_X - 12, 55, 24, 15);
+
+  // Sensor body (ceramic tube)
+  const bodyGrd = ctx.createLinearGradient(WE_X - 6, 0, WE_X + 6, 0);
+  bodyGrd.addColorStop(0, '#8a8a7a');
+  bodyGrd.addColorStop(0.5, '#b0b0a0');
+  bodyGrd.addColorStop(1, '#8a8a7a');
+  ctx.fillStyle = bodyGrd;
+  ctx.fillRect(WE_X - 6, 100, 12, 310);
+
+  // Working electrode wire (extends from body)
+  ctx.strokeStyle = '#ddcc44';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(WE_X, 410);
+  ctx.lineTo(WE_X, WE_TIP_Y + 15);
+  ctx.stroke();
+
+  // Working tip (hemisphere)
+  ctx.fillStyle = '#ddcc44';
+  ctx.beginPath();
+  ctx.arc(WE_X, WE_TIP_Y + 15, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Glow at tip (reaction zone)
+  const glowColor = mode === 'acid' ? 'rgba(255,80,40,' : 'rgba(50,150,255,';
+  const glowR = 15 + Math.sin(t * 0.05) * 5;
+  const glow = ctx.createRadialGradient(WE_X, WE_TIP_Y + 15, 0, WE_X, WE_TIP_Y + 15, glowR * (1 + concPct * 0.03));
+  glow.addColorStop(0, glowColor + '0.35)');
+  glow.addColorStop(1, glowColor + '0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(WE_X, WE_TIP_Y + 15, glowR * (1 + concPct * 0.03), 0, Math.PI * 2);
+  ctx.fill();
+
+  // Label
+  ctx.fillStyle = '#ddcc44';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Working electrode', WE_X + 12, WE_TIP_Y + 18);
+  ctx.fillStyle = '#aaa';
+  ctx.font = '9px sans-serif';
+  ctx.fillText('(wire \u00d81.4 mm)', WE_X + 12, WE_TIP_Y + 30);
+}
+
+function drawReferenceElectrode() {
+  // Electrolytic bridge (tube from sensor body)
+  ctx.strokeStyle = '#7799aa';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(WE_X - 6, 300);
+  ctx.quadraticCurveTo(RE_X, 300, RE_X, RE_TIP_Y);
+  ctx.stroke();
+
+  // Bridge filling pattern (dashed inner)
+  ctx.strokeStyle = '#99bbcc55';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath();
+  ctx.moveTo(WE_X - 6, 300);
+  ctx.quadraticCurveTo(RE_X, 300, RE_X, RE_TIP_Y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Reference electrode tip
+  ctx.fillStyle = '#c0c0c0';
+  ctx.beginPath();
+  ctx.arc(RE_X, RE_TIP_Y, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Ag/AgCl indicator
+  ctx.fillStyle = '#c0c0c0';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('Reference electrode', RE_X - 10, RE_TIP_Y + 3);
+  ctx.fillStyle = '#888';
+  ctx.font = '9px sans-serif';
+  ctx.fillText('(Ag/AgCl)', RE_X - 10, RE_TIP_Y + 15);
+  ctx.fillText('Electrolytic bridge', RE_X - 10, RE_TIP_Y + 27);
+}
+
+function drawExternalCircuit() {
+  // Potentiostat box
+  const PX = 750, PY = 120, PW = 90, PH = 65;
+  ctx.fillStyle = '#1a2233';
+  ctx.strokeStyle = '#4a6a8a';
+  ctx.lineWidth = 2;
+  ctx.fillRect(PX, PY, PW, PH);
+  ctx.strokeRect(PX, PY, PW, PH);
+  ctx.fillStyle = '#7eb8ff';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Potentiostat', PX + PW/2, PY + 22);
+  ctx.fillStyle = '#aabbcc';
+  ctx.font = '9px sans-serif';
+  ctx.fillText('(Transmitter)', PX + PW/2, PY + 38);
+  ctx.fillText('Ekor', PX + PW/2, PY + 52);
+
+  // Wires from potentiostat
+  ctx.strokeStyle = '#556677';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([]);
+
+  // WE wire (yellow): potentiostat → sensor top → working electrode
+  ctx.strokeStyle = '#bbaa33';
+  ctx.beginPath();
+  ctx.moveTo(PX, PY + 15);
+  ctx.lineTo(WE_X + 8, PY + 15);
+  ctx.lineTo(WE_X + 8, 50);
+  ctx.stroke();
+  ctx.fillStyle = '#bbaa33';
+  ctx.font = '8px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('WE', PX - 18, PY + 18);
+
+  // RE wire (gray): potentiostat → reference via bridge
+  ctx.strokeStyle = '#8899aa';
+  ctx.beginPath();
+  ctx.moveTo(PX, PY + 35);
+  ctx.lineTo(RE_X - 6, PY + 35);
+  ctx.lineTo(RE_X - 6, 100);
+  ctx.stroke();
+  ctx.fillStyle = '#8899aa';
+  ctx.font = '8px sans-serif';
+  ctx.fillText('RE', PX - 18, PY + 38);
+
+  // SE wire (dark): potentiostat → wall
+  ctx.strokeStyle = '#556677';
+  ctx.beginPath();
+  ctx.moveTo(PX, PY + 55);
+  ctx.lineTo(PX + 20, PY + 55);
+  ctx.lineTo(PX + 20, 555);
+  ctx.lineTo(WALL_X2, 555);
+  ctx.stroke();
+  ctx.fillStyle = '#556677';
+  ctx.font = '8px sans-serif';
+  ctx.fillText('SE', PX + 24, PY + 58);
+
+  // Ground symbol at wall
+  const gx = WALL_X2 + 11, gy = 555;
+  ctx.strokeStyle = '#556677';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(gx - 8, gy); ctx.lineTo(gx + 8, gy);
+  ctx.moveTo(gx - 5, gy + 4); ctx.lineTo(gx + 5, gy + 4);
+  ctx.moveTo(gx - 2, gy + 8); ctx.lineTo(gx + 2, gy + 8);
+  ctx.stroke();
+
+  // Current direction arrows on external circuit
+  drawCurrentFlow();
+}
+
+function drawCurrentFlow() {
+  // Animate arrows along external circuit path
+  const pathPoints = mode === 'acid' ? [
+    // Cathodic: electrons flow FROM wall TO working electrode via external circuit
+    // Convention current: WE → potentiostat → wall
+    {x: WE_X + 8, y: 50},
+    {x: WE_X + 8, y: 135},
+    {x: 750, y: 135},
+    {x: 770, y: 555},
+    {x: WALL_X2, y: 555},
+  ] : [
+    // Anodic: reversed
+    {x: WALL_X2, y: 555},
+    {x: 770, y: 555},
+    {x: 750, y: 135},
+    {x: WE_X + 8, y: 135},
+    {x: WE_X + 8, y: 50},
+  ];
+
+  currentArrows.forEach(arr => {
+    arr.progress += 0.003 * speed;
+    if (arr.progress > 1) arr.progress -= 1;
+
+    // Find position along path
+    const totalLen = getPathLength(pathPoints);
+    const targetDist = arr.progress * totalLen;
+    let accum = 0;
+    for (let i = 0; i < pathPoints.length - 1; i++) {
+      const dx = pathPoints[i+1].x - pathPoints[i].x;
+      const dy = pathPoints[i+1].y - pathPoints[i].y;
+      const segLen = Math.sqrt(dx*dx + dy*dy);
+      if (accum + segLen >= targetDist) {
+        const frac = (targetDist - accum) / segLen;
+        const px = pathPoints[i].x + dx * frac;
+        const py = pathPoints[i].y + dy * frac;
+        const angle = Math.atan2(dy, dx);
+
+        // Draw small arrow
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(angle);
+        ctx.fillStyle = '#ffee55cc';
+        ctx.beginPath();
+        ctx.moveTo(5, 0);
+        ctx.lineTo(-3, -3);
+        ctx.lineTo(-3, 3);
+        ctx.closePath();
+        ctx.fill();
+
+        // e- label
+        ctx.fillStyle = '#ffee55';
+        ctx.font = '7px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('e\u207B', 0, -6);
+        ctx.restore();
+        break;
+      }
+      accum += segLen;
+    }
+  });
+}
+
+function getPathLength(pts) {
+  let len = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const dx = pts[i+1].x - pts[i].x;
+    const dy = pts[i+1].y - pts[i].y;
+    len += Math.sqrt(dx*dx + dy*dy);
+  }
+  return len;
+}
+
+function drawBubbles() {
+  bubbles.forEach(b => {
+    b.y += b.vy * speed * 0.3;
+    b.x += Math.sin(t * 0.03 + b.x) * 0.2;
+    b.alpha -= 0.003 * speed;
+
+    ctx.globalAlpha = Math.max(0, b.alpha);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath();
+    ctx.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  // Clean old bubbles
+  bubbles = bubbles.filter(b => b.alpha > 0 && b.y > SOL_Y1 - 20);
+}
+
+function drawCurrentArrowsInSolution() {
+  // Show ionic current flow in solution
+  // In acid mode: H+ moves toward WE (cathode)
+  // In ammonia mode: OH- moves toward WE (anode)
+  // Show conventional current direction in solution: from anode to cathode
+
+  const ion = mode === 'acid' ? 'H\u207A' : 'OH\u207B';
+  const color = mode === 'acid' ? '#ff553388' : '#3399ff88';
+
+  // Draw arc arrows showing current path through solution
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+
+  // Current path: wall → solution → working electrode
+  for (let i = 0; i < 3; i++) {
+    const yOff = 350 + i * 30;
+    ctx.beginPath();
+    if (mode === 'acid') {
+      // Ions flow from solution toward WE
+      ctx.moveTo(WALL_X2 - 30, yOff);
+      ctx.quadraticCurveTo(WE_X + 80, yOff + 20, WE_X + 15, WE_TIP_Y);
+    } else {
+      ctx.moveTo(WALL_X1 + 30, yOff);
+      ctx.quadraticCurveTo(WE_X - 80, yOff + 20, WE_X - 15, WE_TIP_Y);
+    }
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+}
+
+function drawModeIndicator() {
+  const boxW = 220, boxH = 36;
+  const bx = (WALL_X1 + WALL_X2) / 2 - boxW / 2;
+  const by = 540;
+
+  ctx.fillStyle = mode === 'acid' ? 'rgba(60,15,5,0.9)' : 'rgba(5,20,50,0.9)';
+  ctx.strokeStyle = mode === 'acid' ? '#ff5533' : '#3399ff';
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, bx, by, boxW, boxH, 6);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = mode === 'acid' ? '#ff7755' : '#55aaff';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(
+    mode === 'acid'
+      ? `Excess HNO\u2083  |  [H\u207A] \u2192 cathode`
+      : `Excess NH\u2083  |  [OH\u207B] \u2192 anode`,
+    bx + boxW/2, by + 14
+  );
+  ctx.fillStyle = '#ccc';
+  ctx.font = '10px sans-serif';
+  ctx.fillText(
+    mode === 'acid'
+      ? '2H\u207A + 2e\u207B \u2192 H\u2082\u2191  (reduction)'
+      : '2OH\u207B \u2192 O\u2082\u2191 + H\u2082O + 2e\u207B  (oxidation)',
+    bx + boxW/2, by + 28
+  );
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function drawTitle() {
+  ctx.fillStyle = '#7eb8ff';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Sensor DK-3S \u2014 Electrochemical Cell', 20, 20);
+  ctx.fillStyle = '#667788';
+  ctx.font = '10px sans-serif';
+  ctx.fillText('Cross-section view', 20, 35);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN LOOP
+// ═══════════════════════════════════════════════════════════════
+
+function frame() {
+  t++;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = '#090d18';
+  ctx.fillRect(0, 0, W, H);
+
+  drawSolution();
+  drawApparatusWall();
+  drawCurrentArrowsInSolution();
+  drawReferenceElectrode();
+  drawWorkingElectrode();
+  drawBubbles();
+
+  // Update and draw ions
+  ions.forEach(ion => {
+    ion.update(1);
+    ion.draw();
+  });
+
+  drawExternalCircuit();
+  drawModeIndicator();
+  drawTitle();
+
+  requestAnimationFrame(frame);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════════════════════
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btnAcid').className =
+    'mode-btn' + (m === 'acid' ? ' active-acid' : '');
+  document.getElementById('btnAmmonia').className =
+    'mode-btn' + (m === 'ammonia' ? ' active-ammonia' : '');
+
+  // Update reaction highlighting
+  document.getElementById('rxn1').className = m === 'acid' ? 'active-rxn' : '';
+  document.getElementById('rxn2').className = m === 'ammonia' ? 'active-rxn' : '';
+
+  initIons();
+  updateReadouts();
+}
+
+function updateParams() {
+  concPct = parseFloat(document.getElementById('slConc').value) / 20;
+  tempC = parseInt(document.getElementById('slTemp').value);
+  speed = parseInt(document.getElementById('slSpeed').value);
+
+  document.getElementById('valConc').textContent = concPct.toFixed(1) + '%';
+  document.getElementById('valTemp').innerHTML = tempC + ' &deg;C';
+  document.getElementById('valSpeed').textContent = speed + 'x';
+
+  updateReadouts();
+}
+
+function updateReadouts() {
+  // Simulated readouts
+  const current = concPct * 3.2 + tempC * 0.02 + (Math.random() - 0.5) * 0.3;
+  const potential = mode === 'acid' ? -(0.25 + concPct * 0.04) : (0.15 + concPct * 0.03);
+  const output = 4 + (current / 20) * 16;
+
+  document.getElementById('rConc').textContent = concPct.toFixed(1) + ' %';
+  document.getElementById('rConc').className = 'r-value ' + (mode === 'acid' ? 'r-acid' : 'r-ammonia');
+  document.getElementById('rPot').textContent = potential.toFixed(3) + ' V';
+  document.getElementById('rCur').textContent = current.toFixed(1) + ' mA';
+  document.getElementById('rOut').textContent = output.toFixed(1) + ' mA';
+}
+
+updateParams();
+frame();
+</script>
+</body>
+</html>
