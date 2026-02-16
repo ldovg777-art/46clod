@@ -152,38 +152,69 @@ class Ion{
   spawn(){
     this.x=WX1+30+Math.random()*(WX2-WX1-60);
     this.y=SY1+30+Math.random()*(SY2-SY1-60);
-    this.vx=(Math.random()-.5)*.4;
-    this.vy=(Math.random()-.5)*.4;
+    this.vx=(Math.random()-.5)*.3;
+    this.vy=(Math.random()-.5)*.3;
     this.ph=Math.random()*6.28;
     this.dead=false; this.fade=1; this.fading=false; this.ft=0;
   }
+  isReactive(){
+    return (mode==='acid'&&this.tp==='H+')||(mode==='ammonia'&&this.tp==='OH-');
+  }
   update(){
-    if(this.fading){this.ft--;this.fade=Math.max(0,this.ft/25);if(this.ft<=0)this.spawn();return}
+    if(this.fading){this.ft--;this.fade=Math.max(0,this.ft/20);if(this.ft<=0)this.spawn();return}
     const s=spd*.35;
-    this.ph+=.04;
-    this.vx+=(Math.random()-.5)*.12*s;
-    this.vy+=(Math.random()-.5)*.12*s;
-    // gentle convection
-    this.vx+=Math.sin(this.ph*.2+this.y*.008)*.015*s;
-    this.vy+=Math.cos(this.ph*.15+this.x*.005)*.01*s;
-    // attract reactive ions toward WE
-    const dx=WE.x-this.x, dy=WE.tipY-this.y, d=Math.sqrt(dx*dx+dy*dy);
     const conc=Math.abs(potential-600)/300; // 0..1
-    if(mode==='acid'&&this.tp==='H+'){
-      const f=conc*.003*s/Math.max(d,25);
-      this.vx+=dx*f; this.vy+=dy*f;
-    } else if(mode==='ammonia'&&this.tp==='OH-'){
-      const f=conc*.003*s/Math.max(d,25);
-      this.vx+=dx*f; this.vy+=dy*f;
+    this.ph+=.04;
+
+    if(this.isReactive()){
+      // ── REACTIVE IONS: strong directed migration toward WE tip ──
+      const dx=WE.x-this.x, dy=WE.tipY-this.y, d=Math.sqrt(dx*dx+dy*dy);
+      const nx=dx/(d+1), ny=dy/(d+1); // normalized direction
+
+      // Strong attraction force — increases with concentration, stronger when closer
+      // Electric field force: proportional to conc, inversely to distance
+      const fBase = 0.04 + conc * 0.12; // base force: significant pull
+      const fDist = fBase * s / Math.max(d * 0.15, 1); // stronger when closer
+      this.vx += nx * fDist;
+      this.vy += ny * fDist;
+
+      // Small random component (thermal noise) — much less than directed force
+      this.vx += (Math.random()-.5) * .04 * s;
+      this.vy += (Math.random()-.5) * .04 * s;
+
+      // Damping — allow faster movement
+      this.vx *= .93; this.vy *= .93;
+      this.x += this.vx * s * .5; this.y += this.vy * s * .5;
+
+      // React at WE tip — high probability when close
+      if(d < 28){
+        const reactProb = 0.06 + conc * 0.12; // much higher reaction rate
+        if(Math.random() < reactProb){
+          this.fading = true; this.ft = 20;
+          // Spawn 2-3 bubbles per reaction (more dramatic)
+          const nb = 2 + Math.floor(Math.random() * 2);
+          for(let b=0; b<nb; b++){
+            mkBubble(WE.x + (Math.random()-.5)*16, WE.tipY - 5 - Math.random()*10, mode==='acid');
+          }
+        }
+      }
+    } else {
+      // ── NON-REACTIVE IONS: gentle random drift (background) ──
+      this.vx += (Math.random()-.5) * .10 * s;
+      this.vy += (Math.random()-.5) * .10 * s;
+      // gentle convection
+      this.vx += Math.sin(this.ph*.2+this.y*.008) * .012 * s;
+      this.vy += Math.cos(this.ph*.15+this.x*.005) * .008 * s;
+      this.vx *= .97; this.vy *= .97;
+      this.x += this.vx * s * .35; this.y += this.vy * s * .35;
     }
-    this.vx*=.96; this.vy*=.96;
-    this.x+=this.vx*s*.4; this.y+=this.vy*s*.4;
+
     // bounds
     const m=12;
-    if(this.x<WX1+m){this.x=WX1+m;this.vx=Math.abs(this.vx)}
-    if(this.x>WX2-m){this.x=WX2-m;this.vx=-Math.abs(this.vx)}
-    if(this.y<SY1+m){this.y=SY1+m;this.vy=Math.abs(this.vy)}
-    if(this.y>SY2-m){this.y=SY2-m;this.vy=-Math.abs(this.vy)}
+    if(this.x<WX1+m){this.x=WX1+m;this.vx=Math.abs(this.vx)*.5}
+    if(this.x>WX2-m){this.x=WX2-m;this.vx=-Math.abs(this.vx)*.5}
+    if(this.y<SY1+m){this.y=SY1+m;this.vy=Math.abs(this.vy)*.5}
+    if(this.y>SY2-m){this.y=SY2-m;this.vy=-Math.abs(this.vy)*.5}
     // avoid electrode bodies
     if(Math.abs(this.x-WE.x)<10&&this.y<WE.tipY&&this.y>SY1+20){
       this.x+=(this.x<WE.x?-1:1)*2;
@@ -191,16 +222,6 @@ class Ion{
     // avoid electrolytic bridge tube inside solution
     if(Math.abs(this.x-RE.bridgeTipX)<10&&this.y>SY1+20&&this.y<RE.bridgeTipY){
       this.x+=(this.x<RE.bridgeTipX?-1:1)*2;
-    }
-    // react at WE tip
-    if(d<22){
-      if((mode==='acid'&&this.tp==='H+')||(mode==='ammonia'&&this.tp==='OH-')){
-        if(Math.random()<.025*conc*1.5){
-          this.fading=true;this.ft=25;
-          mkBubble(WE.x+(Math.random()-.5)*14, WE.tipY-8, mode==='acid');
-          mkBubble(WE.x+(Math.random()-.5)*18, WE.tipY-12, mode==='acid');
-        }
-      }
     }
   }
   draw(){
@@ -223,13 +244,15 @@ class Ion{
 
 function mkIons(){
   ions=[];
-  const conc=Math.abs(potential-600)/300;
-  const nH=mode==='acid'?Math.round(15+conc*25):6;
-  const nOH=mode==='ammonia'?Math.round(15+conc*25):6;
+  const conc=Math.abs(potential-600)/300; // 0..1
+  // Reactive ions: scale aggressively — more concentration = many more ions
+  const nH=mode==='acid'?Math.round(20+conc*50):4;
+  const nOH=mode==='ammonia'?Math.round(20+conc*50):4;
   for(let i=0;i<nH;i++) ions.push(new Ion('H+'));
   for(let i=0;i<nOH;i++) ions.push(new Ion('OH-'));
-  for(let i=0;i<20;i++) ions.push(new Ion('NH4+'));
-  for(let i=0;i<20;i++) ions.push(new Ion('NO3-'));
+  // Background ions: constant count, just for visual context
+  for(let i=0;i<15;i++) ions.push(new Ion('NH4+'));
+  for(let i=0;i<15;i++) ions.push(new Ion('NO3-'));
 }
 mkIons();
 
@@ -416,12 +439,15 @@ function drawReferenceElectrode(){
 }
 
 function drawBubbles(){
-  // Continuous generation
-  bubbleTimer+=spd*.15;
+  // Continuous generation — rate scales with concentration
   const conc=Math.abs(potential-600)/300;
-  if(bubbleTimer>3/(conc+.1)){
+  bubbleTimer+=spd*.2*(conc+.15);
+  if(bubbleTimer>2){
     bubbleTimer=0;
-    mkBubble(WE.x+(Math.random()-.5)*16, WE.tipY-5, mode==='acid');
+    const nb=1+Math.floor(conc*2); // 1-3 bubbles per burst
+    for(let b=0;b<nb;b++){
+      mkBubble(WE.x+(Math.random()-.5)*18, WE.tipY-3-Math.random()*12, mode==='acid');
+    }
   }
 
   for(let i=bubbles.length-1;i>=0;i--){
@@ -635,12 +661,16 @@ function setMode(m){
   mkIons(); upd();
 }
 
+let lastConc=0;
 function upd(){
   potential=parseInt(document.getElementById('slE').value);
   spd=parseInt(document.getElementById('slS').value);
   // Auto-detect mode from potential
   if(potential>620&&mode!=='acid') setMode('acid');
   else if(potential<580&&mode!=='ammonia') setMode('ammonia');
+  // Regenerate ions when concentration changes significantly
+  const newConc=Math.abs(potential-600)/300;
+  if(Math.abs(newConc-lastConc)>.08){lastConc=newConc;mkIons()}
   document.getElementById('vE').textContent='+'+potential+' mV';
   document.getElementById('vS').textContent=spd+'x';
   // Potential marker position
