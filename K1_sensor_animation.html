@@ -19,7 +19,7 @@
   .btn{display:block;width:100%;padding:10px;margin-bottom:7px;border:2px solid #2a3a5c;border-radius:6px;background:#0d1525;color:#c0c8d8;font-size:13px;cursor:pointer;transition:.3s;text-align:left;-webkit-tap-highlight-color:transparent}
   .btn:hover{border-color:#4a6a9c;background:#162040}
   .btn.a-acid{border-color:#ff6644;background:linear-gradient(135deg,#1a0800,#2a1008);color:#ff9977}
-  .btn.a-nh3{border-color:#44aaff;background:linear-gradient(135deg,#000818,#081a2a);color:#77ccff}
+  .btn.a-nh3{border-color:#ccaa22;background:linear-gradient(135deg,#1a1800,#2a2408);color:#eedd55}
   .btn .bt{font-weight:700;font-size:14px;display:block;margin-bottom:2px}
   .btn .bd{font-size:11px;opacity:.7}
   .sr{display:flex;align-items:center;gap:8px;margin-bottom:7px}
@@ -30,7 +30,7 @@
   .ri{background:#0a0e1a;border:1px solid #1e2a44;border-radius:6px;padding:7px;text-align:center}
   .ri .rl{font-size:9px;color:#667799;text-transform:uppercase;letter-spacing:.5px}
   .ri .rv{font-size:20px;font-weight:700;font-family:monospace;margin-top:2px}
-  .pot-bar{position:relative;height:28px;background:linear-gradient(90deg,#2255cc,#335588,#888,#885533,#cc4422);border-radius:4px;margin:8px 0 4px;border:1px solid #444}
+  .pot-bar{position:relative;height:28px;background:linear-gradient(90deg,#bbaa22,#887744,#888,#885533,#cc4422);border-radius:4px;margin:8px 0 4px;border:1px solid #444}
   .pot-mark{position:absolute;top:-2px;width:3px;height:32px;background:#fff;border-radius:2px;transition:left .3s}
   .pot-labels{display:flex;justify-content:space-between;font-size:9px;color:#889}
   .leg{display:flex;flex-wrap:wrap;gap:5px}
@@ -383,7 +383,7 @@ function drawWall(){
 }
 
 function drawSolution(){
-  const c=mode==='acid'?'rgba(45,18,12,.88)':'rgba(12,22,45,.88)';
+  const c=mode==='acid'?'rgba(45,18,12,.88)':'rgba(45,40,12,.88)';
   X.fillStyle=c;X.fillRect(WX1,46,WX2-WX1,538);
   // Surface shimmer
   X.fillStyle='rgba(120,160,200,.06)';
@@ -415,7 +415,7 @@ function drawWorkingElectrode(){
   X.strokeStyle='#c0a820';X.lineWidth=1;X.stroke();
   // Reaction glow
   const conc=Math.abs(potential-600)/300;
-  const gc=mode==='acid'?'rgba(255,80,30,':'rgba(40,150,255,';
+  const gc=mode==='acid'?'rgba(255,80,30,':'rgba(220,200,40,';
   const gr=20+Math.sin(tick*.06)*6;
   const gd=X.createRadialGradient(WE.x,WE.tipY,0,WE.x,WE.tipY,gr*(1+conc*.6));
   gd.addColorStop(0,gc+(.3+conc*.2).toFixed(2)+')');gd.addColorStop(1,gc+'0)');
@@ -648,7 +648,7 @@ function pathLen(p){let l=0;for(let i=0;i<p.length-1;i++){const dx=p[i+1].x-p[i]
 function drawIonicCurrent(){
   const conc=Math.abs(potential-600)/300;
   if(conc<.05)return;
-  const col=mode==='acid'?'rgba(255,60,30,.15)':'rgba(30,140,255,.15)';
+  const col=mode==='acid'?'rgba(255,60,30,.15)':'rgba(220,200,40,.15)';
   X.strokeStyle=col;X.lineWidth=2;X.setLineDash([8,5]);
   // Curved flow lines from wall toward WE tip
   for(let i=0;i<4;i++){
@@ -683,10 +683,10 @@ function drawInfo(){
   // Mode box at bottom of solution
   const conc=Math.abs(potential-600)/300;
   const bw=260,bh=42,bx=(WX1+WX2)/2-bw/2,by=SY2+6;
-  X.fillStyle=mode==='acid'?'rgba(50,12,5,.92)':'rgba(5,15,45,.92)';
-  X.strokeStyle=mode==='acid'?'#ff5533':'#3399ff';X.lineWidth=1.5;
+  X.fillStyle=mode==='acid'?'rgba(50,12,5,.92)':'rgba(45,40,5,.92)';
+  X.strokeStyle=mode==='acid'?'#ff5533':'#ccaa22';X.lineWidth=1.5;
   roundRect(bx,by,bw,bh,5);X.fill();X.stroke();
-  X.fillStyle=mode==='acid'?'#ff8866':'#66bbff';X.font='bold 12px sans-serif';X.textAlign='center';
+  X.fillStyle=mode==='acid'?'#ff8866':'#eedd55';X.font='bold 12px sans-serif';X.textAlign='center';
   X.fillText(
     mode==='acid'
       ?'Excess HNO\u2083  \u2502  H\u207A \u2192 cathode'
@@ -769,7 +769,7 @@ function upd(){
   document.getElementById('rE').textContent='+'+potential+' mV';
   document.getElementById('rI').innerHTML=curr+' &micro;A';
   document.getElementById('rX').textContent=(mode==='acid'?'HNO\u2083 ':'NH\u2083 ')+excPct+'%';
-  document.getElementById('rX').style.color=mode==='acid'?'#ff7755':'#55aaff';
+  document.getElementById('rX').style.color=mode==='acid'?'#ff7755':'#eedd55';
   document.getElementById('rQ').textContent=out+' mA';
 }
 upd();
