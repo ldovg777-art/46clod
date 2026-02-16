@@ -634,7 +634,8 @@ for label, val in input_data:
 # ── Section: Потребление тока ──
 row += 2
 ws6.merge_cells(f'A{row}:F{row}')
-ws6.cell(row=row, column=1, value='ПОТРЕБЛЕНИЕ ТОКА ТРАНСМИТТЕРА (РАЗБИВКА)')
+ws6.cell(row=row, column=1,
+    value='ПОТРЕБЛЕНИЕ ТОКА ТРАНСМИТТЕРА (из документации K1)')
 ws6.cell(row=row, column=1).font = sub_header_font
 ws6.cell(row=row, column=1).fill = sub_header_fill
 ws6.cell(row=row, column=1).alignment = center
@@ -642,11 +643,10 @@ for c in range(1, 7):
     ws6.cell(row=row, column=c).border = border_all
 
 current_breakdown = [
-    ('Электроника трансмиттера (MCU, АЦП, ЦАП)', '~80 мА'),
-    ('RS-485 приёмопередатчик', '~15 мА'),
-    ('Выход 4-20 мА QS1 (Потенциал/ORP)', '4...20 мА'),
-    ('Выход 4-20 мА QS2 (pH/Концентрация)', '4...20 мА'),
-    ('Запас на пульсации и потери в стабилизаторе', '~15 мА'),
+    ('Паспортное: "Power consumption of the transmitter: 8 W (0.35A)"',
+     '350 мА (8 Вт / 24 В)'),
+    ('I = P / U = 8 Вт / 24 В = 0.333 А (округлено до 0.35 А)', ''),
+    ('Суммарный ток в Cable 9 (два трансмиттера)', '700 мА'),
 ]
 for label, val in current_breakdown:
     row += 1
@@ -719,10 +719,10 @@ for i, h in enumerate(summary_headers, 1):
 style_header_row(ws6, row, 1, 6)
 
 scenarios = [
-    ('Минимальный (холостой ход, выходы 4мА)', 60),
-    ('Номинальный (выходы ~12мА)', 120),
-    ('Максимальный (выходы 20мА, полная нагрузка)', 150),
-    ('Аварийный (пусковой бросок)', 200),
+    ('Минимальный (пуск, прогрев)', 200),
+    ('Номинальный (выходы ~12мА)', 300),
+    ('Паспортный (8 Вт / 24 В = 0.35 А)', 350),
+    ('Максимальный (с запасом 10%)', 385),
 ]
 
 for (scenario_name, I_mA) in scenarios:
@@ -781,7 +781,7 @@ ws6.cell(row=row, column=5).border = border_all
 row += 2
 ws6.merge_cells(f'A{row}:F{row}')
 ws6.cell(row=row, column=1,
-    value='ДЕТАЛЬНЫЙ РАСЧЁТ — НАИХУДШИЙ СЛУЧАЙ (150 мА, 65°C)')
+    value='ДЕТАЛЬНЫЙ РАСЧЁТ — ПАСПОРТНЫЙ РЕЖИМ (350 мА = 8 Вт, 65°C)')
 ws6.cell(row=row, column=1).font = sub_header_font
 ws6.cell(row=row, column=1).fill = PatternFill(start_color='FFC000',
     end_color='FFC000', fill_type='solid')
@@ -789,8 +789,8 @@ ws6.cell(row=row, column=1).alignment = center
 for c in range(1, 7):
     ws6.cell(row=row, column=c).border = border_all
 
-# Calculate worst case
-I_tx_w = 0.150
+# Calculate worst case (passport: 8W / 24V = 0.35A)
+I_tx_w = 0.350
 I_cab9_w = 2 * I_tx_w
 rho_65 = rho_20 * (1 + alpha_cu * 45)
 R9_w = rho_65 * 250 / 1.5
@@ -852,13 +852,13 @@ for c in range(1, 7):
 
 recommendations = [
     ('1. Увеличить сечение Cable 9 до 2.5 мм²',
-     f'V на трансмиттере (65°C, 150мА)',
+     f'V на трансмиттере (65°C, 350мА)',
      round(24.0 - 2 * (rho_65 * 250 / 2.5) * I_cab9_w - dU_cab3_w, 2)),
     ('2. Повысить напряжение источника до 27 В',
-     f'V на трансмиттере (65°C, 150мА)',
+     f'V на трансмиттере (65°C, 350мА)',
      round(V_T1_w + 3, 2)),
     ('3. Сократить Cable 9 до 100 м (перенести SCADA box)',
-     f'V на трансмиттере (65°C, 150мА)',
+     f'V на трансмиттере (65°C, 350мА)',
      round(24.0 - 2 * (rho_65 * 100 / 1.5) * I_cab9_w - dU_cab3_w, 2)),
     ('4. Отдельный БП 24VDC у Connection Box',
      f'V на трансмиттере (без Cable 9)',
