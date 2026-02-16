@@ -6,26 +6,26 @@
 <title>DK-3S Concentration Sensor — Electrochemical Measurement</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{background:#080c16;color:#ddd;font-family:'Segoe UI',Arial,sans-serif}
+  body{background:#080c16;color:#ddd;font-family:'Segoe UI',Arial,sans-serif;overflow-x:hidden}
   .hdr{text-align:center;padding:14px 10px 8px;background:linear-gradient(135deg,#0d1525,#162040);border-bottom:2px solid #2a3a5c}
   .hdr h1{font-size:19px;color:#7eb8ff;letter-spacing:1px}
   .hdr h2{font-size:12px;color:#8899bb;font-weight:400;margin-top:3px}
   .wrap{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;padding:14px;max-width:1440px;margin:0 auto}
-  .cv{background:#0e1420;border:1px solid #2a3a5c;border-radius:8px;padding:6px;flex:1 1 900px;max-width:960px}
-  canvas{display:block;width:100%;border-radius:4px}
-  .pnl{flex:0 1 360px;display:flex;flex-direction:column;gap:10px}
+  .cv{background:#0e1420;border:1px solid #2a3a5c;border-radius:8px;padding:6px;flex:1 1 600px;max-width:960px;min-width:0}
+  canvas{display:block;width:100%;height:auto;border-radius:4px}
+  .pnl{flex:0 1 360px;display:flex;flex-direction:column;gap:10px;min-width:0}
   .cd{background:#111828;border:1px solid #2a3a5c;border-radius:8px;padding:12px}
   .cd h3{font-size:12px;color:#7eb8ff;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;border-bottom:1px solid #1e2a44;padding-bottom:5px}
-  .btn{display:block;width:100%;padding:10px;margin-bottom:7px;border:2px solid #2a3a5c;border-radius:6px;background:#0d1525;color:#c0c8d8;font-size:13px;cursor:pointer;transition:.3s;text-align:left}
+  .btn{display:block;width:100%;padding:10px;margin-bottom:7px;border:2px solid #2a3a5c;border-radius:6px;background:#0d1525;color:#c0c8d8;font-size:13px;cursor:pointer;transition:.3s;text-align:left;-webkit-tap-highlight-color:transparent}
   .btn:hover{border-color:#4a6a9c;background:#162040}
   .btn.a-acid{border-color:#ff6644;background:linear-gradient(135deg,#1a0800,#2a1008);color:#ff9977}
   .btn.a-nh3{border-color:#44aaff;background:linear-gradient(135deg,#000818,#081a2a);color:#77ccff}
   .btn .bt{font-weight:700;font-size:14px;display:block;margin-bottom:2px}
   .btn .bd{font-size:11px;opacity:.7}
   .sr{display:flex;align-items:center;gap:8px;margin-bottom:7px}
-  .sr label{font-size:12px;color:#8899bb;min-width:90px}
-  .sr input[type=range]{flex:1;accent-color:#5588cc;height:5px}
-  .sr .v{font-size:13px;font-family:monospace;color:#eee;min-width:70px;text-align:right;font-weight:700}
+  .sr label{font-size:12px;color:#8899bb;min-width:80px;flex-shrink:0}
+  .sr input[type=range]{flex:1;accent-color:#5588cc;height:5px;min-width:0}
+  .sr .v{font-size:13px;font-family:monospace;color:#eee;min-width:65px;text-align:right;font-weight:700;flex-shrink:0}
   .ro{display:grid;grid-template-columns:1fr 1fr;gap:7px}
   .ri{background:#0a0e1a;border:1px solid #1e2a44;border-radius:6px;padding:7px;text-align:center}
   .ri .rl{font-size:9px;color:#667799;text-transform:uppercase;letter-spacing:.5px}
@@ -38,6 +38,35 @@
   .ld{width:10px;height:10px;border-radius:50%;flex-shrink:0}
   .rxn{font-family:'Courier New',monospace;font-size:12px;line-height:1.9;color:#778}
   .rxn .act{color:#ffdd66;font-weight:700}
+
+  /* ── Tablet (<=900px): panel below canvas ── */
+  @media(max-width:900px){
+    .wrap{flex-direction:column;align-items:stretch;padding:8px;gap:10px}
+    .cv{flex:none;max-width:100%}
+    .pnl{flex:none;flex-direction:row;flex-wrap:wrap;gap:8px}
+    .pnl .cd{flex:1 1 calc(50% - 4px);min-width:200px}
+  }
+
+  /* ── Phone (<=520px): single column, compact ── */
+  @media(max-width:520px){
+    .hdr{padding:10px 6px 6px}
+    .hdr h1{font-size:14px;letter-spacing:0}
+    .hdr h2{font-size:10px}
+    .wrap{padding:5px;gap:6px}
+    .pnl{flex-direction:column}
+    .pnl .cd{flex:none;min-width:0;padding:9px}
+    .cd h3{font-size:10px;margin-bottom:5px}
+    .btn{padding:8px;margin-bottom:5px}
+    .btn .bt{font-size:12px}
+    .btn .bd{font-size:10px}
+    .sr label{font-size:11px;min-width:65px}
+    .sr .v{font-size:12px;min-width:55px}
+    .ri .rv{font-size:16px}
+    .ri .rl{font-size:8px}
+    .rxn{font-size:10px;line-height:1.7}
+    .pot-labels{font-size:8px}
+    .li{font-size:10px}
+  }
 </style>
 </head>
 <body>
@@ -48,7 +77,7 @@
 </div>
 
 <div class="wrap">
-  <div class="cv"><canvas id="c" width="940" height="680"></canvas></div>
+  <div class="cv"><canvas id="c"></canvas></div>
   <div class="pnl">
 
     <div class="cd">
@@ -123,9 +152,32 @@
 
 <script>
 const C = document.getElementById('c'), X = C.getContext('2d');
-const dpr = window.devicePixelRatio||1, W=940, H=680;
-C.width=W*dpr; C.height=H*dpr; C.style.width=W+'px'; C.style.height=H+'px';
-X.setTransform(dpr,0,0,dpr,0,0);
+// Internal design size — all coordinates use this coordinate system
+const W=940, H=680;
+let dpr = window.devicePixelRatio||1;
+let sc = 1; // display scale factor
+
+function resizeCanvas(){
+  dpr = window.devicePixelRatio||1;
+  const container = C.parentElement;
+  const cw = container.clientWidth - 12; // minus padding
+  sc = Math.min(cw / W, 1); // never upscale beyond 1x
+  const dispW = Math.floor(W * sc);
+  const dispH = Math.floor(H * sc);
+  C.width = dispW * dpr;
+  C.height = dispH * dpr;
+  C.style.width = dispW + 'px';
+  C.style.height = dispH + 'px';
+  // Combined transform: dpr for sharpness, sc for fitting
+  X.setTransform(dpr * sc, 0, 0, dpr * sc, 0, 0);
+}
+resizeCanvas();
+
+let resizeTimer;
+window.addEventListener('resize', function(){
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(resizeCanvas, 120);
+});
 
 let mode='acid', potential=750, spd=5, tick=0;
 
@@ -274,14 +326,18 @@ class Ion{
 function mkIons(){
   ions=[];
   const conc=Math.abs(potential-600)/300; // 0..1
+  // On small screens reduce counts for performance
+  const mobile = window.innerWidth < 520;
+  const k = mobile ? 0.5 : 1; // reduction factor
   // Reactive ions: scale aggressively — more concentration = many more ions
-  const nH=mode==='acid'?Math.round(20+conc*50):4;
-  const nOH=mode==='ammonia'?Math.round(20+conc*50):4;
+  const nH=mode==='acid'?Math.round((20+conc*50)*k):Math.round(4*k);
+  const nOH=mode==='ammonia'?Math.round((20+conc*50)*k):Math.round(4*k);
   for(let i=0;i<nH;i++) ions.push(new Ion('H+'));
   for(let i=0;i<nOH;i++) ions.push(new Ion('OH-'));
   // Background ions: constant count, just for visual context
-  for(let i=0;i<15;i++) ions.push(new Ion('NH4+'));
-  for(let i=0;i<15;i++) ions.push(new Ion('NO3-'));
+  const nBg=Math.round(15*k);
+  for(let i=0;i<nBg;i++) ions.push(new Ion('NH4+'));
+  for(let i=0;i<nBg;i++) ions.push(new Ion('NO3-'));
 }
 mkIons();
 
@@ -660,8 +716,9 @@ function roundRect(x,y,w,h,r){
 // ═══════════════════════════════════════════════════════════════
 function frame(){
   tick++;
-  X.clearRect(0,0,W,H);
-  X.fillStyle='#080c16';X.fillRect(0,0,W,H);
+  // Clear full internal coordinate space (transform handles pixel mapping)
+  X.clearRect(0,0,W+10,H+10);
+  X.fillStyle='#080c16';X.fillRect(0,0,W+10,H+10);
   drawSolution();
   drawWall();
   drawIonicCurrent();
