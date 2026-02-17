@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fig.5 — Structural scheme of the system — DEEPAK K1</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#fff;font-family:'Segoe UI',Arial,Helvetica,sans-serif;color:#000;padding:20px;overflow-x:hidden}
+h1{text-align:center;font-size:18px;margin-bottom:4px;font-weight:700}
+h2{text-align:center;font-size:12px;font-weight:400;color:#555;margin-bottom:16px}
+.scheme{position:relative;width:900px;max-width:100%;margin:0 auto;aspect-ratio:9/13}
+svg{width:100%;height:100%;display:block}
+/* Zone labels */
+.zone-label{font-size:11px;font-style:italic;fill:#444}
+/* Block boxes */
+.blk{fill:#fff;stroke:#000;stroke-width:1.5}
+.blk-bold{fill:#fff;stroke:#000;stroke-width:2.2}
+/* Text */
+.t-title{font-size:12px;font-weight:700;text-anchor:middle;dominant-baseline:central}
+.t-sub{font-size:9px;text-anchor:middle;dominant-baseline:central;fill:#333}
+.t-small{font-size:8px;text-anchor:middle;dominant-baseline:central;fill:#000}
+.t-tiny{font-size:7px;text-anchor:middle;dominant-baseline:central;fill:#000}
+.t-tiny-l{font-size:7px;text-anchor:start;dominant-baseline:central;fill:#000}
+.t-tiny-b{font-size:7px;font-weight:700;text-anchor:middle;dominant-baseline:central;fill:#000}
+/* Wires */
+.wire{fill:none;stroke:#000;stroke-width:1.3}
+/* Wire number boxes */
+.wn-box{fill:#fff;stroke:#000;stroke-width:1}
+.wn-txt{font-size:8px;font-weight:700;text-anchor:middle;dominant-baseline:central}
+.wn-len{font-size:7px;text-anchor:middle;fill:#000}
+/* Zone dashed */
+.zone{fill:none;stroke:#000;stroke-width:1.5;stroke-dasharray:10,5}
+/* Ground symbol */
+.gnd{stroke:#000;stroke-linecap:round}
+/* Legend */
+.leg{font-size:8px;fill:#333}
+
+@media(max-width:600px){
+  body{padding:8px}
+  h1{font-size:14px}
+  h2{font-size:10px}
+}
+</style>
+</head>
+<body>
+
+<h1>Fig.5 &mdash; Structural scheme of the system</h1>
+<h2>DEEPAK K1 &mdash; GP Plant, India &nbsp;|&nbsp; 421457.103E1</h2>
+
+<div class="scheme">
+<svg viewBox="0 0 900 1300" xmlns="http://www.w3.org/2000/svg">
+
+<!-- ════════ ZONE 1: Technological area ════════ -->
+<rect class="zone" x="20" y="20" width="860" height="580"/>
+<text class="zone-label" x="35" y="38">Technological area</text>
+
+<!-- ════════ SENSORS ════════ -->
+<!-- S1 Sensor1 -->
+<rect class="blk-bold" x="150" y="60" width="180" height="60"/>
+<text class="t-title" x="240" y="90">S1  Sensor1</text>
+
+<!-- S2 Sensor2 -->
+<rect class="blk-bold" x="570" y="60" width="180" height="60"/>
+<text class="t-title" x="660" y="90">S2  Sensor2</text>
+
+<!-- ════════ TRANSMITTERS ════════ -->
+<!-- T1 -->
+<rect class="blk-bold" x="150" y="200" width="180" height="70"/>
+<text class="t-title" x="240" y="225">Transmitter</text>
+<text class="t-title" x="240" y="250">T1</text>
+
+<!-- T2 -->
+<rect class="blk-bold" x="570" y="200" width="180" height="70"/>
+<text class="t-title" x="660" y="225">Transmitter</text>
+<text class="t-title" x="660" y="250">T2</text>
+
+<!-- ════════ WIRE 1: S1 → T1 (15m) ════════ -->
+<line class="wire" x1="240" y1="120" x2="240" y2="200"/>
+<rect class="wn-box" x="228" y="148" width="24" height="18"/>
+<text class="wn-txt" x="240" y="157">1</text>
+<text class="wn-len" x="240" y="143" dominant-baseline="auto">15m</text>
+
+<!-- ════════ WIRE 2: S2 → T2 (15m) ════════ -->
+<line class="wire" x1="660" y1="120" x2="660" y2="200"/>
+<rect class="wn-box" x="648" y="148" width="24" height="18"/>
+<text class="wn-txt" x="660" y="157">2</text>
+<text class="wn-len" x="660" y="143" dominant-baseline="auto">15m</text>
+
+<!-- ════════ WIRE 7: T1 → ground (50m) ════════ -->
+<line class="wire" x1="330" y1="235" x2="400" y2="235"/>
+<rect class="wn-box" x="353" y="226" width="24" height="18"/>
+<text class="wn-txt" x="365" y="235">7</text>
+<text class="wn-len" x="365" y="220" dominant-baseline="auto">50m</text>
+<!-- Ground symbol -->
+<line class="gnd" x1="400" y1="223" x2="400" y2="247" stroke-width="2"/>
+<line class="gnd" x1="405" y1="227" x2="405" y2="243" stroke-width="1.5"/>
+<line class="gnd" x1="410" y1="230" x2="410" y2="240" stroke-width="1"/>
+
+<!-- ════════ WIRE 8: T2 → ground (50m) ════════ -->
+<line class="wire" x1="750" y1="235" x2="820" y2="235"/>
+<rect class="wn-box" x="773" y="226" width="24" height="18"/>
+<text class="wn-txt" x="785" y="235">8</text>
+<text class="wn-len" x="785" y="220" dominant-baseline="auto">50m</text>
+<!-- Ground symbol -->
+<line class="gnd" x1="820" y1="223" x2="820" y2="247" stroke-width="2"/>
+<line class="gnd" x1="825" y1="227" x2="825" y2="243" stroke-width="1.5"/>
+<line class="gnd" x1="830" y1="230" x2="830" y2="240" stroke-width="1"/>
+
+<!-- ════════ CONNECTION BOX ════════ -->
+<rect class="blk-bold" x="120" y="340" width="380" height="220"/>
+<text class="t-title" x="310" y="362">Connection box</text>
+
+<!-- Divider line POWER | RS-485 -->
+<line class="wire" x1="310" y1="380" x2="310" y2="540" stroke-dasharray="none"/>
+
+<!-- POWER terminals -->
+<text class="t-tiny-b" x="215" y="392">POWER</text>
+<text class="t-tiny" x="215" y="412">1  24VDC+</text>
+<text class="t-tiny" x="215" y="430">2  24VDC&ndash;</text>
+<text class="t-tiny" x="215" y="448">3  24VDC+</text>
+<text class="t-tiny" x="215" y="466">4  24VDC&ndash;</text>
+
+<!-- RS-485 terminals -->
+<text class="t-tiny-b" x="405" y="392">RS-485</text>
+<text class="t-tiny" x="405" y="412">5  Data+</text>
+<text class="t-tiny" x="405" y="430">6  Data&ndash;</text>
+<text class="t-tiny" x="405" y="448">7  Data+</text>
+<text class="t-tiny" x="405" y="466">8  Data&ndash;</text>
+
+<!-- ════════ WIRE 3: Connection box → T1 (15m, 24VDC/RS485) ════════ -->
+<line class="wire" x1="200" y1="270" x2="200" y2="340"/>
+<rect class="wn-box" x="188" y="296" width="24" height="18"/>
+<text class="wn-txt" x="200" y="305">3</text>
+<text class="wn-len" x="180" y="290" dominant-baseline="auto" text-anchor="end">15m</text>
+<text class="t-tiny" x="160" y="310">24VDC/</text>
+<text class="t-tiny" x="160" y="322">RS485</text>
+
+<!-- ════════ WIRE 4: Connection box → T2 (15m, 24VDC/RS485) ════════ -->
+<polyline class="wire" points="500,430 540,430 600,430 600,270"/>
+<rect class="wn-box" x="528" y="421" width="24" height="18"/>
+<text class="wn-txt" x="540" y="430">4</text>
+<text class="wn-len" x="540" y="415" dominant-baseline="auto">15m</text>
+<text class="t-tiny" x="618" y="350">24VDC/</text>
+<text class="t-tiny" x="618" y="362">RS485</text>
+
+<!-- ════════ WIRE 5: T1 → DCS (4-20mA, 200m) ════════ -->
+<polyline class="wire" points="275,270 275,300 275,600"/>
+<line class="wire" x1="275" y1="620" x2="275" y2="770"/>
+<rect class="wn-box" x="263" y="690" width="24" height="18"/>
+<text class="wn-txt" x="275" y="699">5</text>
+<text class="wn-len" x="275" y="685" dominant-baseline="auto">200m</text>
+<text class="t-tiny" x="295" y="285" text-anchor="start">4-20mA</text>
+
+<!-- ════════ WIRE 6: T2 → DCS (4-20mA, 200m) ════════ -->
+<polyline class="wire" points="700,270 700,295 310,295 310,340"/>
+<!-- Wire 6 also goes down through connection box (outside) and to DCS -->
+<!-- Actually, wire 6 from T2 goes down separately to DCS -->
+<polyline class="wire" points="700,270 700,310 320,310 320,600"/>
+<line class="wire" x1="320" y1="620" x2="320" y2="770"/>
+<rect class="wn-box" x="308" y="690" width="24" height="18"/>
+<text class="wn-txt" x="320" y="699">6</text>
+<text class="wn-len" x="320" y="685" dominant-baseline="auto">200m</text>
+<text class="t-tiny" x="510" y="305" text-anchor="middle">4-20mA</text>
+
+<!-- ════════ ZONE 2: Central control room ════════ -->
+<rect class="zone" x="20" y="620" width="860" height="580"/>
+<text class="zone-label" x="35" y="1188">Central control room</text>
+
+<!-- ════════ WIRE 9: Connection box → SCADA (250m, 24VDC/RS485) ════════ -->
+<polyline class="wire" points="380,560 380,600"/>
+<polyline class="wire" points="380,620 380,750 520,750 520,810"/>
+<rect class="wn-box" x="368" y="660" width="24" height="18"/>
+<text class="wn-txt" x="380" y="669">9</text>
+<text class="wn-len" x="380" y="655" dominant-baseline="auto">250m</text>
+<text class="t-tiny" x="360" y="710" text-anchor="end">24VDC/RS485</text>
+
+<!-- ════════ DCS TERMINAL BLOCK ════════ -->
+<rect class="blk" x="80" y="770" width="380" height="55"/>
+<text class="t-tiny" x="100" y="800" transform="rotate(-90,100,800)" text-anchor="middle">4-20mA</text>
+<text class="t-tiny" x="130" y="800" transform="rotate(-90,130,800)" text-anchor="middle">T1 Pot+</text>
+<text class="t-tiny" x="155" y="800" transform="rotate(-90,155,800)" text-anchor="middle">T1 Pot&ndash;</text>
+<text class="t-tiny" x="180" y="800" transform="rotate(-90,180,800)" text-anchor="middle">T1 pH+</text>
+<text class="t-tiny" x="205" y="800" transform="rotate(-90,205,800)" text-anchor="middle">T1 pH&ndash;</text>
+<text class="t-tiny" x="250" y="800" transform="rotate(-90,250,800)" text-anchor="middle">T2 Pot+</text>
+<text class="t-tiny" x="275" y="800" transform="rotate(-90,275,800)" text-anchor="middle">T2 Pot&ndash;</text>
+<text class="t-tiny" x="300" y="800" transform="rotate(-90,300,800)" text-anchor="middle">T2 pH+</text>
+<text class="t-tiny" x="325" y="800" transform="rotate(-90,325,800)" text-anchor="middle">T2 pH&ndash;</text>
+
+<!-- ════════ DCS K-1 GP Plant ════════ -->
+<rect class="blk-bold" x="80" y="870" width="280" height="100"/>
+<text class="t-title" x="220" y="908">DCS</text>
+<text class="t-title" x="220" y="935">K-1 GP Plant</text>
+
+<!-- Terminal → DCS -->
+<line class="wire" x1="220" y1="825" x2="220" y2="870"/>
+
+<!-- 230VAC input label -->
+<text class="t-tiny" x="385" y="910">230VAC</text>
+<text class="t-tiny" x="385" y="925">1.5A</text>
+<line class="wire" x1="360" y1="920" x2="380" y2="920" stroke-width="0.8"/>
+
+<!-- ════════ SCADA EKOR BOX ════════ -->
+<rect class="blk-bold" x="500" y="810" width="200" height="90"/>
+<text class="t-title" x="600" y="845">SCADA Ekor Box</text>
+<text class="t-sub" x="600" y="870">24VDC output</text>
+
+<!-- ════════ Socket ════════ -->
+<rect class="blk" x="510" y="950" width="110" height="45"/>
+<text class="t-sub" x="565" y="975">Socket</text>
+
+<!-- WIRE 10: Socket → SCADA (100m, 230VAC) -->
+<line class="wire" x1="565" y1="950" x2="565" y2="900"/>
+<rect class="wn-box" x="530" y="916" width="24" height="18"/>
+<text class="wn-txt" x="542" y="925">10</text>
+<text class="wn-len" x="515" y="930" text-anchor="end">100m</text>
+<text class="t-tiny" x="515" y="945" text-anchor="end">230VAC</text>
+
+<!-- WIRE 11: SCADA → 24VDC (3m) -->
+<line class="wire" x1="700" y1="855" x2="770" y2="855"/>
+<rect class="wn-box" x="723" y="846" width="24" height="18"/>
+<text class="wn-txt" x="735" y="855">11</text>
+<text class="wn-len" x="735" y="840" dominant-baseline="auto">3m</text>
+<text class="t-tiny-l" x="755" y="870">24VDC</text>
+
+<!-- ════════ OPERATOR PANEL ════════ -->
+<rect class="blk-bold" x="500" y="1030" width="200" height="70"/>
+<text class="t-title" x="600" y="1058">Oper. panel</text>
+<text class="t-sub" x="600" y="1078">(display)</text>
+
+<!-- RS-485 from SCADA → Oper panel -->
+<line class="wire" x1="600" y1="900" x2="600" y2="1030"/>
+<text class="t-tiny-l" x="608" y="970">RS485</text>
+
+<!-- ════════ MOUSE ════════ -->
+<rect class="blk" x="540" y="1140" width="110" height="40"/>
+<text class="t-sub" x="595" y="1162">Mouse</text>
+<line class="wire" x1="595" y1="1100" x2="595" y2="1140"/>
+
+<!-- ════════ LCD MONITOR ════════ -->
+<rect class="blk-bold" x="740" y="920" width="120" height="70"/>
+<text class="t-title" x="800" y="948">LCD</text>
+<text class="t-title" x="800" y="968">Monitor</text>
+
+<!-- WIRE 12: Oper panel → LCD (3m, HDMI) -->
+<polyline class="wire" points="700,1065 800,1065 800,990"/>
+<rect class="wn-box" x="788" y="1020" width="24" height="18"/>
+<text class="wn-txt" x="800" y="1029">12</text>
+<text class="wn-len" x="800" y="1015" dominant-baseline="auto">3m</text>
+<text class="t-tiny" x="760" y="1080">HDMI</text>
+
+<!-- ════════ WIRE LEGEND ════════ -->
+<text class="leg" x="30" y="1220">Wires 1,2 &ndash; type 4&times;1.0 mm&sup2; with shield (Ekor)</text>
+<text class="leg" x="30" y="1235">Wires 5,6 &ndash; type 2pair&times;1.5 mm&sup2; with shield (K-1 GP Plant)</text>
+<text class="leg" x="30" y="1250">Wires 3,4,9 &ndash; type 2pair&times;1.5 mm&sup2; twisted pair (K-1 GP Plant)</text>
+<text class="leg" x="30" y="1265">Wires 7,8 &ndash; type 1C&times;2.5 mm&sup2; grounding wire Yellow/Green (K-1 GP Plant)</text>
+<text class="leg" x="30" y="1280">Wire 10 &ndash; type 3Core&times;2.5 mm&sup2; (K-1 GP Plant) &nbsp;&nbsp; Wire 11 &ndash; type 3&times;0.75 mm&sup2; (Ekor) &nbsp;&nbsp; Wire 12 &ndash; type HDMI (Ekor)</text>
+
+</svg>
+</div>
+
+</body>
+</html>
