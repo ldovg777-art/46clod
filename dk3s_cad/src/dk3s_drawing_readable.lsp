@@ -896,7 +896,7 @@
   (dk3s_leader (dk3s_p 300.8 (/ e2 2.0)) (dk3s_p 284.0 yb) 1 "Гайка нажимная")
   (dk3s_leader (dk3s_p 430.0 (+ g_dk3s_bridge_r (/ g_dk3s_bridge_d 2.0))) (dk3s_p 400.0 yb) 1
                "Электролитический мостик (2 шт.)")
-  (dk3s_leader (dk3s_p 605.0 (- (- g_dk3s_re_r) (/ g_dk3s_conn_pin_d 2.0))) (dk3s_p 530.0 -46.0) 1
+  (dk3s_leader (dk3s_p 605.0 (- (- g_dk3s_re_r) (/ g_dk3s_conn_pin_d 2.0))) (dk3s_p 548.0 -46.0) 1
                "Токоотвод электрода сравнения")
   ;; ряд C
   (dk3s_leader (dk3s_p 8.0 (/ g_dk3s_guard_w 2.0)) (dk3s_p -12.0 yc) 1 "Защитная скоба")
