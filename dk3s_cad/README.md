@@ -16,7 +16,7 @@
 1. Открыть новый документ (шаблон с миллиметрами).
 2. Команда `APPLOAD` (или `_.APPLOAD`), выбрать `dk3s_drawing.lsp`. Альтернатива в командной строке:
    `(load "C:/путь/к/dk3s_drawing.lsp")`.
-3. Команда `DK3S`. В командной строке появится `DK3S: drawing complete, entities: 454, dims: entmake, ...`.
+3. Команда `DK3S`. В командной строке появится `DK3S: drawing complete, entities: 474, dims: entmake, ...`.
 4. Сохранить как DWG.
 
 Пакетно (без окна): `dk3s_build.bat` ищет `nCad.exe` в `%ProgramFiles%\Nanosoft\*` и запускает
@@ -65,7 +65,7 @@
 Чтобы править тексты: `python3 tools/lisp_cyr_escape.py --decode dk3s_drawing.lsp > src.lsp`,
 отредактировать, затем `python3 tools/lisp_cyr_escape.py src.lsp > dk3s_drawing.lsp`.
 
-Шрифт надписей `ISOCPEUR.ttf` (`g_dk3s_font`). Если его нет, CAD подставит шрифт по умолчанию; можно указать `arial.ttf`.
+Шрифт надписей `GOST.shx` с наклоном 15° (`g_dk3s_font`), как в чертежах ЭКОР. Если его нет, укажите `ISOCPEUR.ttf` или `arial.ttf`.
 
 ## Запасные пути (на случай отличий LISP в nanoCAD)
 
