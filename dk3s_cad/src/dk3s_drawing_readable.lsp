@@ -1,6 +1,6 @@
 ;;; ============================================================================
 ;;;  dk3s_drawing.lsp  —  Чертёж общего вида датчика концентрации ДК-3С-210АВ
-;;;  Версия: 1.1.1  (2026-09-19)
+;;;  Версия: 1.2.0  (2026-09-19)
 ;;;  Платформа: nanoCAD / AutoCAD / BricsCAD / ZWCAD (AutoLISP, только entmake)
 ;;;
 ;;;  Источник геометрии:
@@ -47,18 +47,23 @@
 (setq g_dk3s_guard_d      2.0)     ; диаметр проволоки скобы
 (setq g_dk3s_guard_r      4.0)     ; наружный радиус гиба скобы
 (setq g_dk3s_tip_off      5.5)     ; смещение оси наконечника от оси датчика
-(setq g_dk3s_tip_d        7.0)     ; наконечник: шестигранник 1/4" (S6,35, по углам 7,3)
+(setq g_dk3s_tip_d        7.0)     ; наконечник (фторопласт): тело Ø7, шестигранник 1/4" фрезерован по Ø7
 (setq g_dk3s_tip_s        6.35)    ; размер под ключ наконечника
-(setq g_dk3s_tip_len      18.0)    ; длина шестигранной части наконечника
-(setq g_dk3s_tip_cone     2.5)     ; длина конуса наконечника
-(setq g_dk3s_tip_nose_d   2.0)     ; диаметр торца конуса
+(setq g_dk3s_tip_len      18.3)    ; тело Ø7: цилиндр 12,5 + шестигранник 5,8 (Fig. 4/5 техописания K1)
+(setq g_dk3s_tip_cone     3.5)     ; длина конуса наконечника (Fig. 4)
+(setq g_dk3s_tip_nose_d   1.8)     ; диаметр торца носика
 (setq g_dk3s_tip_vis      3.7)     ; выступ шестигранника над торцом гильзы
 (setq g_dk3s_we_d         1.4)     ; рабочий электрод: проволока Ø1,4
 (setq g_dk3s_we_len       2.0)     ; выступ рабочего электрода из наконечника
 (setq g_dk3s_tube_d       6.0)     ; защитная трубка токоотвода (наружный Ø)
 (setq g_dk3s_tube_wall    0.5)     ; стенка защитной трубки
-(setq g_dk3s_tap_d        3.0)     ; токоотвод рабочего электрода (резьба шаг 0,5)
-(setq g_dk3s_tip_bore_len 15.0)    ; глубина резьбового отверстия в наконечнике
+(setq g_dk3s_tap_d        3.0)     ; токоотвод рабочего электрода (резьба M3x0,5 — на неё накручен наконечник)
+(setq g_dk3s_tap_minor_d  2.46)    ; внутренний диаметр резьбы M3x0,5 (тонкая линия)
+(setq g_dk3s_tap_cone_z1  13.6)    ; конус на конце токоотвода: начало и конец от торца тела наконечника
+(setq g_dk3s_tap_cone_z2  18.7)    ; (Fig. 4: токоотвод конусом переходит в электрод Ø1,4)
+(setq g_dk3s_tip_shank_d  5.0)     ; хвостовик наконечника под трубку: по её внутреннему Ø, натяг
+(setq g_dk3s_tip_shank_l  15.0)    ; длина хвостовика (трубка надета на всю длину)
+(setq g_dk3s_tip_bore_end 20.0)    ; дно отверстия Ø3 от торца тела, дальше канал электрода в носике
 
 ;; --- Защитная гильза ----------------------------------------------------------
 (setq g_dk3s_z_sleeve     15.6)    ; торец гильзы
@@ -130,6 +135,13 @@
 (setq g_dk3s_re_neck_d    16.0)
 (setq g_dk3s_re_seg2      34.0)    ; второй сегмент
 (setq g_dk3s_re_gap       1.0)     ; зазор до буртика штыря
+
+;; --- Станции вертикальных размеров главного вида (от вершины скобы) -------------
+(setq g_dk3s_zdim_sleeve  130.0)   ; Ø32 гильзы (число на оси — осевая под ним прерывается)
+(setq g_dk3s_zdim_thread  246.0)   ; M42x3 корпуса (то же)
+(setq g_dk3s_zdim_wire    350.0)   ; Ø3 провода ВЭ (число под проводом, левее надписи о нём)
+(setq g_dk3s_zdim_tube    455.0)   ; Ø6 трубки токоотвода (число над верхним мостиком)
+(setq g_dk3s_zdim_re      565.0)   ; Ø20 электрода сравнения (число над верхним электродом)
 
 ;; --- Итоговые (вычисляются) ---------------------------------------------------
 (setq g_dk3s_z_re_end     (+ g_dk3s_z_re g_dk3s_re_seg1 g_dk3s_re_neck g_dk3s_re_seg2))   ; 582.8
@@ -338,25 +350,30 @@
   (reverse res)
 )
 
-;; Штриховка выпуклого многоугольника линиями под 45° с шагом pitch (тонкие линии)
-(defun dk3s_hatch_poly (pts pitch lay / xs ys cmin cmax c i n p1 p2 ts t1 t2 d x0 y0 x1 y1 den tt)
-  (setq xs (mapcar 'car pts) ys (mapcar 'cadr pts))
-  ;; линии y = x + c ; c от min(y-x) до max(y-x)
-  (setq cmin (apply 'min (mapcar '- ys xs)) cmax (apply 'max (mapcar '- ys xs)))
+;; Штриховка выпуклого многоугольника линиями под 45 градусов (sgn = 1) или 135 градусов (sgn = -1)
+;; с шагом pitch (тонкие линии); точки — модель
+(defun dk3s_hatch_dir (pts pitch lay sgn / cmin cmax c i n p1 p2 ts t1 t2 d x0 y0 x1 y1 den tt)
+  ;; линии y = sgn*x + c ; c от min(y - sgn*x) до max(y - sgn*x) по вершинам
+  (setq cmin nil cmax nil i 0 n (length pts))
+  (while (< i n)
+    (setq p1 (nth i pts) c (- (cadr p1) (* sgn (car p1))))
+    (if (or (not cmin) (< c cmin)) (setq cmin c))
+    (if (or (not cmax) (> c cmax)) (setq cmax c))
+    (setq i (1+ i))
+  )
   (setq d (* pitch (sqrt 2.0)))
   (setq c (+ cmin (/ d 2.0)))
-  (setq n (length pts))
   (while (< c cmax)
-    ;; пересечения линии y = x + c с рёбрами многоугольника; параметр t = x
+    ;; пересечения линии с рёбрами многоугольника; параметр t = x
     (setq ts nil i 0)
     (while (< i n)
       (setq p1 (nth i pts) p2 (nth (rem (1+ i) n) pts))
       (setq x0 (car p1) y0 (cadr p1) x1 (car p2) y1 (cadr p2))
-      ;; ребро: (x,y) = p1 + s*(p2-p1), s in [0,1]; решаем y0 + s*dy = x0 + s*dx + c
-      (setq den (- (- y1 y0) (- x1 x0)))
+      ;; ребро: (x,y) = p1 + s*(p2-p1), s in [0,1]; решаем y0 + s*dy = sgn*(x0 + s*dx) + c
+      (setq den (- (- y1 y0) (* sgn (- x1 x0))))
       (if (> (abs den) 1e-9)
         (progn
-          (setq tt (/ (- (+ x0 c) y0) den))
+          (setq tt (/ (- (+ (* sgn x0) c) y0) den))
           (if (and (>= tt -1e-9) (<= tt (+ 1.0 1e-9)))
             (setq ts (cons (+ x0 (* tt (- x1 x0))) ts))
           )
@@ -368,12 +385,19 @@
       (progn
         (setq t1 (apply 'min ts) t2 (apply 'max ts))
         (if (> (- t2 t1) 1e-6)
-          (dk3s_line (list t1 (+ t1 c) 0.0) (list t2 (+ t2 c) 0.0) lay)
+          (dk3s_line (list t1 (+ (* sgn t1) c) 0.0) (list t2 (+ (* sgn t2) c) 0.0) lay)
         )
       )
     )
     (setq c (+ c d))
   )
+)
+
+;; Штриховка металла (45 градусов) и «в клетку» — неметаллы, ГОСТ 2.306
+(defun dk3s_hatch_poly (pts pitch lay) (dk3s_hatch_dir pts pitch lay 1.0))
+(defun dk3s_hatch_cross (pts pitch lay)
+  (dk3s_hatch_dir pts pitch lay 1.0)
+  (dk3s_hatch_dir pts pitch lay -1.0)
 )
 
 ;;; ---------------------------------------------------------------------------
@@ -436,8 +460,14 @@
                       '(78 . 8)                    ; DIMZIN — без хвостовых нулей
                       '(271 . 1)                   ; DIMDEC — один знак
                       '(278 . 44)                  ; DIMDSEP — запятая
-                      '(279 . 1)                   ; DIMTMOVE
-                      '(171 . 2) '(172 . 0) '(174 . 0) '(175 . 0) '(176 . 0) '(177 . 0)))
+                      '(279 . 0)                   ; DIMTMOVE 0 — число прикреплено к размерной линии: CAD
+                                                   ; продлевает линию до вынесенного числа и отодвигает его
+                                                   ; за стрелки (при 1 — только если число далеко; опыт на ODA)
+                      '(174 . 1)                   ; DIMTIX — число всегда между выносными (иначе nanoCAD
+                                                   ; уводит невлезающее число на выноске — опыт на ODA)
+                      '(172 . 1)                   ; DIMTOFL — линия между выносными всегда (ГОСТ 2.307,
+                                                   ; и без неё nanoCAD не продлевает линию до вынесенного числа)
+                      '(171 . 2) '(175 . 0) '(176 . 0) '(177 . 0)))
       (if (setq st (tblobjname "STYLE" g_dk3s_style))
         (setq lst (append lst (list (cons 340 st))))     ; DIMTXSTY
       )
@@ -447,7 +477,8 @@
           (setq g_dk3s_dim_mode "command")
           (setvar "DIMSCALE" g_dk3s_scale_den) (setvar "DIMASZ" 3.0) (setvar "DIMEXO" 0.625)
           (setvar "DIMEXE" 1.25) (setvar "DIMTXT" g_dk3s_txt_h) (setvar "DIMGAP" 0.625)
-          (setvar "DIMTIH" 0) (setvar "DIMTOH" 0) (setvar "DIMTAD" 1) (setvar "DIMZIN" 8)
+          (setvar "DIMTIH" 0) (setvar "DIMTOH" 0) (setvar "DIMTAD" 1) (setvar "DIMZIN" 8) (setvar "DIMTIX" 1) (setvar "DIMTOFL" 1)
+          (setvar "DIMTMOVE" 0)
           (setvar "DIMDEC" 1) (setvar "DIMDSEP" ",") (setvar "DIMTXSTY" g_dk3s_style)
         )
       )
@@ -462,14 +493,30 @@
 ;; Линейный размер. p1, p2 — точки объекта; pd — точка на размерной линии;
 ;; rot — 0 (горизонтальный) или 90 (вертикальный); txt — "" (авто) или переопределение
 ;; ("%%c<>" — диаметр, "S<>" — под ключ и т.п.)
-(defun dk3s_dim (p1 p2 pd rot txt / r)
+(defun dk3s_dim (p1 p2 pd rot txt)
+  (dk3s_dim_t p1 p2 pd rot txt nil)
+)
+
+;; То же с заданным положением размерного числа tp (модель) или nil — число ставит CAD.
+;; tp — когда число между выносными легло бы на линии детали: число выносится на продолжение
+;; размерной линии за контур (ГОСТ 2.307, рис. 14). Группа 70 с флагом 128 + группа 11; при DIMTMOVE 0
+;; поперёк линии tp задаёт саму размерную линию, вдоль — место числа; CAD продлевает линию до числа
+;; и сам отодвигает его за стрелки (проверено на ODA — движке nanoCAD, 19.09.2026).
+;; У вертикального размера p1 — нижняя точка: nanoCAD и AutoCAD ставят число слева от линии всегда,
+;; а проверочный рендер (ezdxf) — по направлению p1 -> p2; так они совпадают.
+(defun dk3s_dim_t (p1 p2 pd rot txt tp / r q)
+  (if (and (= rot 90) (> (cadr p1) (cadr p2)))
+    (setq q p1 p1 p2 p2 q)
+  )
   (if (= g_dk3s_dim_mode "entmake")
     (progn
-      (setq r (entmake (list '(0 . "DIMENSION") '(100 . "AcDbEntity") (cons 8 g_dk3s_lay_dim)
-                             '(100 . "AcDbDimension") (cons 10 pd) '(70 . 32) (cons 1 txt)
-                             (cons 3 g_dk3s_dimstyle)
-                             '(100 . "AcDbAlignedDimension") (cons 13 p1) (cons 14 p2)
-                             (cons 50 rot) '(100 . "AcDbRotatedDimension"))))
+      (setq r (entmake (append
+                         (list '(0 . "DIMENSION") '(100 . "AcDbEntity") (cons 8 g_dk3s_lay_dim)
+                               '(100 . "AcDbDimension") (cons 10 pd))
+                         (if tp (list (cons 11 tp)) nil)
+                         (list (cons 70 (if tp 160 32)) (cons 1 txt) (cons 3 g_dk3s_dimstyle)
+                               '(100 . "AcDbAlignedDimension") (cons 13 p1) (cons 14 p2)
+                               (cons 50 rot) '(100 . "AcDbRotatedDimension")))))
       (if r
         (dk3s_made r)
         (setq g_dk3s_dim_mode "command")   ; entmake не прошёл — переключаемся на команду
@@ -478,6 +525,7 @@
   )
   (if (/= g_dk3s_dim_mode "entmake")
     (progn
+      ;; запасной путь: число ставит команда (положение tp не передаётся)
       (if (= txt "")
         (command "_.DIMLINEAR" p1 p2 (if (= rot 90) "_V" "_H") pd)
         (command "_.DIMLINEAR" p1 p2 (if (= rot 90) "_V" "_H") "_T" txt pd)
@@ -485,6 +533,49 @@
       (setq g_dk3s_cnt (1+ g_dk3s_cnt))
     )
   )
+)
+
+;; Точка tp для числа вертикального размера, вынесенного за контур на продолжение размерной линии
+;; (ГОСТ 2.307, рис. 14): z — станция размерной линии, re — край детали (координата вида),
+;; sgn — 1 число выше детали, -1 ниже; str — число, как его напишет CAD («O» вместо знака Ø), для длины.
+;; x — сама размерная линия (DIMTMOVE 0), y — середина числа: от контура длина стрелки + 1 мм листа
+;; (ближе nanoCAD число не ставит — отодвигает сам); при наружных стрелках CAD отодвинет его ещё
+;; и за хвост стрелки. Число встанет слева от линии.
+(defun dk3s_dimtxt_v (z re sgn str / h w p)
+  (setq h (* g_dk3s_txt_h g_dk3s_scale_den)
+        w (dk3s_text_w str h)
+        p (dk3s_p z re))
+  (list (car p)
+        (+ (cadr p) (* sgn (+ (* 4.0 g_dk3s_scale_den) (/ w 2.0))))   ; стрелка 3 + 1 мм
+        0.0)
+)
+
+;; То же для горизонтального размера: r — уровень размерной линии, z — выносная линия, за которую
+;; выносится число, sgn — -1 влево, 1 вправо; y — сама размерная линия, число CAD поставит над ней.
+(defun dk3s_dimtxt_h (z r sgn str / h w p)
+  (setq h (* g_dk3s_txt_h g_dk3s_scale_den)
+        w (dk3s_text_w str h)
+        p (dk3s_p z r))
+  (list (+ (car p) (* sgn (+ (* 4.0 g_dk3s_scale_den) (/ w 2.0))))   ; стрелка 3 + 1 мм
+        (cadr p)
+        0.0)
+)
+
+;; Осевая от z1 до z2 на уровне r0 с разрывами под числами вертикальных размеров, стоящими на ней
+;; (ГОСТ 2.307: в месте размерного числа осевые прерывают); zs — станции размерных линий по возрастанию
+(defun dk3s_axis_seg (z1 z2 r0 zs / a g1 g2 z)
+  (setq a z1)
+  (foreach z zs
+    (setq g1 (- z (/ (* (+ 0.625 g_dk3s_txt_h 0.75) g_dk3s_scale_den) g_dk3s_k))   ; левее числа
+          g2 (- z (/ (* 0.25 g_dk3s_scale_den) g_dk3s_k)))                         ; между числом и линией
+    (if (and (> g1 a) (< g2 z2))
+      (progn
+        (dk3s_line (dk3s_p a r0) (dk3s_p g1 r0) g_dk3s_lay_axis)
+        (setq a g2)
+      )
+    )
+  )
+  (dk3s_line (dk3s_p a r0) (dk3s_p z2 r0) g_dk3s_lay_axis)
 )
 
 ;; Выноска: точка на детали (с точкой), излом, полка и текст над полкой
@@ -831,9 +922,9 @@
 )
 
 ;; Осевая линия датчика
-;; Ось датчика; на бирке прерывается, чтобы не пересекать надпись на ней
+;; Ось датчика; прерывается на бирке (надпись на ней) и под числами Ø32 и M42x3
 (defun dk3s_draw_axis ()
-  (dk3s_line (dk3s_p -6.0 0.0) (dk3s_p g_dk3s_z_tag 0.0) g_dk3s_lay_axis)
+  (dk3s_axis_seg -6.0 g_dk3s_z_tag 0.0 (list g_dk3s_zdim_sleeve g_dk3s_zdim_thread))
   (dk3s_line (dk3s_p g_dk3s_z_tag_end 0.0)
              (dk3s_p (+ g_dk3s_z_we_end g_dk3s_conn_collar_l g_dk3s_conn_body_l
                         1.0 g_dk3s_conn_pin_l g_dk3s_conn_tip_l 5.0) 0.0) g_dk3s_lay_axis)
@@ -859,74 +950,84 @@
 ;;;    Разрез: защитная трубка и наконечник заштрихованы, стержни — без штриховки.
 ;;; ---------------------------------------------------------------------------
 
-(defun dk3s_draw_detail_a ( / rt rti rtap rtip rn rw rb zt zh zc zw zb hp h pts sgn ztap)
+(defun dk3s_draw_detail_a ( / rt rti rtap rtapm rtip rn rw rsh zt zs zh zc zw zb ztc1 ztc2 rzb hp hpt h sgn)
+  ;; Узел рабочего электрода по Fig. 4 «Технического описания K1» (стр. 48): трубка и наконечник —
+  ;; фторопласт (штриховка «в клетку», ГОСТ 2.306); трубка надета с натягом на хвостовик наконечника;
+  ;; наконечник накручен на токоотвод M3x0,5; токоотвод на конце конусом переходит в электрод Ø1,4.
   (setq rt (/ g_dk3s_tube_d 2.0) rti (- rt g_dk3s_tube_wall) rtap (/ g_dk3s_tap_d 2.0)
-        rtip (/ g_dk3s_tip_d 2.0) rn (/ g_dk3s_tip_nose_d 2.0) rw (/ g_dk3s_we_d 2.0)
-        rb (+ rw 0.1))                                  ; отверстие под электрод
-  (setq zt 18.0)                                        ; конец трубки = начало наконечника
-  (setq zh (+ zt g_dk3s_tip_len))                       ; конец шестигранника
-  (setq zc (+ zh g_dk3s_tip_cone))                      ; торец конуса
+        rtapm (/ g_dk3s_tap_minor_d 2.0) rtip (/ g_dk3s_tip_d 2.0) rn (/ g_dk3s_tip_nose_d 2.0)
+        rw (/ g_dk3s_we_d 2.0) rsh (/ g_dk3s_tip_shank_d 2.0))
+  (setq zt 22.0)                                        ; торец тела наконечника = конец трубки
+  (setq zs (- zt g_dk3s_tip_shank_l))                   ; начало хвостовика (внутри трубки)
+  (setq zh (+ zt g_dk3s_tip_len))                       ; конец тела Ø7 (цилиндр + шестигранник)
+  (setq zc (+ zh g_dk3s_tip_cone))                      ; торец носика
   (setq zw (+ zc g_dk3s_we_len))                        ; конец электрода
-  (setq zb (+ zt g_dk3s_tip_bore_len))                  ; дно резьбового отверстия
-  (setq ztap (- zb 1.0))                                ; конец токоотвода
-  (setq hp (* 1.5 g_dk3s_scale_den))                    ; шаг штриховки на листе 1,5 мм
+  (setq zb (+ zt g_dk3s_tip_bore_end))                  ; дно отверстия Ø3, дальше канал электрода
+  (setq ztc1 (+ zt g_dk3s_tap_cone_z1) ztc2 (+ zt g_dk3s_tap_cone_z2))   ; конус на конце токоотвода
+  (setq rzb (- rtip (* (- zb zh) (/ (- rtip rn) g_dk3s_tip_cone))))     ; радиус наружного конуса у дна отверстия
+  (setq hp (* 1.2 g_dk3s_scale_den) hpt (* 0.8 g_dk3s_scale_den))       ; шаг «клетки»: наконечник, трубка
   ;; осевая
   (dk3s_line (dk3s_p -4.0 0.0) (dk3s_p (+ zw 4.0) 0.0) g_dk3s_lay_axis)
-  ;; защитная трубка (в разрезе): наружные и внутренние образующие, обрыв слева
-  (dk3s_cyl 0.0 zt rt 0.0)
-  (dk3s_cyl 0.0 zt rti 0.0)
-  (dk3s_face zt rti rt) (dk3s_face zt (- rt) (- rti))
   (foreach sgn '(1.0 -1.0)
-    (setq pts (list (dk3s_p 0.0 (* sgn rti)) (dk3s_p zt (* sgn rti)) (dk3s_p zt (* sgn rt)) (dk3s_p 0.0 (* sgn rt))))
-    (dk3s_hatch_poly pts hp g_dk3s_lay_thin)
+    ;; защитная трубка: наружная и внутренняя образующие (внутренняя от хвостовика — граница натяга)
+    (dk3s_line (dk3s_p 0.0 (* sgn rt)) (dk3s_p zt (* sgn rt)) g_dk3s_lay_main)
+    (dk3s_line (dk3s_p 0.0 (* sgn rti)) (dk3s_p zt (* sgn rti)) g_dk3s_lay_main)
+    ;; наконечник: торец хвостовика, торец тела, тело Ø7, конус, торец носика
+    (dk3s_line (dk3s_p zs (* sgn rtap)) (dk3s_p zs (* sgn rsh)) g_dk3s_lay_main)
+    (dk3s_line (dk3s_p zt (* sgn rsh)) (dk3s_p zt (* sgn rtip)) g_dk3s_lay_main)
+    (dk3s_line (dk3s_p zt (* sgn rtip)) (dk3s_p zh (* sgn rtip)) g_dk3s_lay_main)
+    (dk3s_line (dk3s_p zh (* sgn rtip)) (dk3s_p zc (* sgn rn)) g_dk3s_lay_main)
+    (dk3s_line (dk3s_p zc (* sgn rw)) (dk3s_p zc (* sgn rn)) g_dk3s_lay_main)
+    ;; отверстие Ø3 (по нему токоотвод) и его дно; канал электрода в носике — по электроду
+    (dk3s_line (dk3s_p zs (* sgn rtap)) (dk3s_p zb (* sgn rtap)) g_dk3s_lay_main)
+    (dk3s_line (dk3s_p zb (* sgn rw)) (dk3s_p zb (* sgn rtap)) g_dk3s_lay_main)
+    ;; токоотвод Ø3 (не рассекается): в трубке до хвостовика, резьба — тонкая линия, конус к электроду
+    (dk3s_line (dk3s_p 0.0 (* sgn rtap)) (dk3s_p zs (* sgn rtap)) g_dk3s_lay_main)
+    (dk3s_line (dk3s_p 0.0 (* sgn rtapm)) (dk3s_p ztc1 (* sgn rtapm)) g_dk3s_lay_thin)
+    (dk3s_line (dk3s_p ztc1 (* sgn rtap)) (dk3s_p ztc2 (* sgn rw)) g_dk3s_lay_main)
+    ;; рабочий электрод Ø1,4 (приварен к токоотводу)
+    (dk3s_line (dk3s_p ztc2 (* sgn rw)) (dk3s_p zw (* sgn rw)) g_dk3s_lay_main)
+    ;; штриховка «в клетку»: трубка мельче, наконечник крупнее (смежные детали)
+    (dk3s_hatch_cross (list (dk3s_p 0.0 (* sgn rti)) (dk3s_p zt (* sgn rti))
+                            (dk3s_p zt (* sgn rt)) (dk3s_p 0.0 (* sgn rt))) hpt g_dk3s_lay_thin)
+    (dk3s_hatch_cross (list (dk3s_p zs (* sgn rtap)) (dk3s_p zt (* sgn rtap))
+                            (dk3s_p zt (* sgn rsh)) (dk3s_p zs (* sgn rsh))) hp g_dk3s_lay_thin)
+    (dk3s_hatch_cross (list (dk3s_p zt (* sgn rtap)) (dk3s_p zh (* sgn rtap))
+                            (dk3s_p zh (* sgn rtip)) (dk3s_p zt (* sgn rtip))) hp g_dk3s_lay_thin)
+    (dk3s_hatch_cross (list (dk3s_p zh (* sgn rtap)) (dk3s_p zb (* sgn rtap))
+                            (dk3s_p zb (* sgn rzb)) (dk3s_p zh (* sgn rtip))) hp g_dk3s_lay_thin)
+    (dk3s_hatch_cross (list (dk3s_p zb (* sgn rw)) (dk3s_p zc (* sgn rw))
+                            (dk3s_p zc (* sgn rn)) (dk3s_p zb (* sgn rzb))) hp g_dk3s_lay_thin)
   )
-  ;; токоотвод Ø3 (стержень, без штриховки), резьбовой конец с фаской
-  (dk3s_cyl 0.0 ztap rtap 0.0)
-  (dk3s_face ztap (- rtap) rtap)
-  ;; линия обрыва слева (волнистая упрощённо — ломаная)
-  (dk3s_pline (list (dk3s_p 0.0 (- rt 0.5)) (dk3s_p -0.6 (* 0.5 rt)) (dk3s_p 0.6 0.0)
-                    (dk3s_p -0.6 (* -0.5 rt)) (dk3s_p 0.0 (- 0.5 rt))) nil 0.0 g_dk3s_lay_thin)
-  ;; наконечник (в разрезе): наружный контур шестигранника + конус, отверстия
-  (dk3s_face zt rtap rtip) (dk3s_face zt (- rtip) (- rtap))
-  (dk3s_cyl zt zh rtip 0.0)
-  (dk3s_line (dk3s_p zh rtip) (dk3s_p zc rn) g_dk3s_lay_main)
-  (dk3s_line (dk3s_p zh (- rtip)) (dk3s_p zc (- rn)) g_dk3s_lay_main)
-  (dk3s_face zc rb rn) (dk3s_face zc (- rn) (- rb))
-  (dk3s_cyl zt zb rtap 0.0)             ; резьбовое отверстие (стенки)
-  (dk3s_face zb rb rtap) (dk3s_face zb (- rtap) (- rb))
-  (dk3s_cyl zb zc rb 0.0)               ; отверстие под электрод
-  ;; штриховка наконечника: 3 выпуклых участка на сторону
-  (foreach sgn '(1.0 -1.0)
-    (dk3s_hatch_poly (list (dk3s_p zt (* sgn rtap)) (dk3s_p zb (* sgn rtap))
-                           (dk3s_p zb (* sgn rtip)) (dk3s_p zt (* sgn rtip))) hp g_dk3s_lay_thin)
-    (dk3s_hatch_poly (list (dk3s_p zb (* sgn rb)) (dk3s_p zh (* sgn rb))
-                           (dk3s_p zh (* sgn rtip)) (dk3s_p zb (* sgn rtip))) hp g_dk3s_lay_thin)
-    (dk3s_hatch_poly (list (dk3s_p zh (* sgn rb)) (dk3s_p zc (* sgn rb))
-                           (dk3s_p zc (* sgn rn)) (dk3s_p zh (* sgn rtip))) hp g_dk3s_lay_thin)
-  )
-  ;; рабочий электрод Ø1,4: приварен к торцу токоотвода, выступает на 2 мм
-  (dk3s_cyl ztap zw rw 0.0)
+  ;; линия обрыва трубки и токоотвода слева (упрощённо — ломаная)
+  (dk3s_pline (list (dk3s_p 0.0 (+ rt 0.5)) (dk3s_p -0.6 (* 0.5 rt)) (dk3s_p 0.6 0.0)
+                    (dk3s_p -0.6 (* -0.5 rt)) (dk3s_p 0.0 (- -0.5 rt))) nil 0.0 g_dk3s_lay_thin)
   (dk3s_face zw (- rw) rw)
   ;; размеры выносного элемента (текст задан явно — вид увеличен)
   (setq h (* g_dk3s_txt_h g_dk3s_scale_den))
-  (dk3s_dim (dk3s_p zw rw) (dk3s_p zw (- rw)) (dk3s_p (+ zw 3.0) 0.0) 90.0
-            (strcat "%%c" (dk3s_num g_dk3s_we_d 1)))
+  ;; числа диаметров — над деталью на продолжении размерной линии: внутри легли бы на линии
+  ;; токоотвода и отверстия (ГОСТ 2.307: размерное число не пересекают никакие линии)
+  (dk3s_dim_t (dk3s_p zw rw) (dk3s_p zw (- rw)) (dk3s_p (+ zw 3.0) 0.0) 90.0
+              (strcat "%%c" (dk3s_num g_dk3s_we_d 1))
+              (dk3s_dimtxt_v (+ zw 3.0) rw 1.0 (strcat "O" (dk3s_num g_dk3s_we_d 1))))
   (dk3s_dim (dk3s_p zc (- rn)) (dk3s_p zw (- rn)) (dk3s_p 0.0 (- (- rtip) 3.0)) 0.0
             (dk3s_num g_dk3s_we_len 0))
-  (dk3s_dim (dk3s_p 9.0 rt) (dk3s_p 9.0 (- rt)) (dk3s_p 9.0 0.0) 90.0
-            (strcat "%%c" (dk3s_num g_dk3s_tube_d 0)))
-  (dk3s_dim (dk3s_p 4.0 rtap) (dk3s_p 4.0 (- rtap)) (dk3s_p 4.0 0.0) 90.0
-            (strcat "%%c" (dk3s_num g_dk3s_tap_d 0)))
-  (dk3s_dim (dk3s_p (+ zt 9.0) rtip) (dk3s_p (+ zt 9.0) (- rtip)) (dk3s_p (+ zt 9.0) 0.0) 90.0
-            (strcat "S" (dk3s_num g_dk3s_tip_s 2)))
+  (dk3s_dim_t (dk3s_p 4.5 rt) (dk3s_p 4.5 (- rt)) (dk3s_p 4.5 0.0) 90.0
+              (strcat "%%c" (dk3s_num g_dk3s_tube_d 0))              ; резьба токоотвода M3x0,5 — в ТТ, п. 3
+              (dk3s_dimtxt_v 4.5 rt 1.0 (strcat "O" (dk3s_num g_dk3s_tube_d 0))))
+  (dk3s_dim_t (dk3s_p (+ zt 8.0) rtip) (dk3s_p (+ zt 8.0) (- rtip)) (dk3s_p (+ zt 8.0) 0.0) 90.0
+              (strcat "%%c" (dk3s_num g_dk3s_tip_d 0))
+              (dk3s_dimtxt_v (+ zt 8.0) rtip 1.0 (strcat "O" (dk3s_num g_dk3s_tip_d 0))))
+  (dk3s_dim (dk3s_p zs rt) (dk3s_p zt rt) (dk3s_p 0.0 (+ rtip 2.5)) 0.0
+            (dk3s_num g_dk3s_tip_shank_l 0))
   ;; надписи выносного элемента
-  (dk3s_leader (dk3s_p 12.0 rt) (dk3s_p 6.0 (+ rtip 6.0)) 1 "Защитная трубка")
-  (dk3s_leader (dk3s_p (+ zt 4.0) (- rtip)) (dk3s_p (+ zt 6.0) (- (- rtip) 7.0)) 1 "Наконечник")
-  (dk3s_leader (dk3s_p (+ zc 1.0) rw) (dk3s_p (+ zc 3.0) (+ rtip 6.0)) 1 "Рабочий электрод")
-  (dk3s_leader (dk3s_p 6.0 (- rtap)) (dk3s_p 12.0 (- (- rtip) 13.0)) 1 "Токоотвод рабочего электрода")
+  (dk3s_leader (dk3s_p 1.0 rt) (dk3s_p -2.0 (+ rtip 7.5)) 1 "Защитная трубка")
+  (dk3s_leader (dk3s_p (+ zt 12.0) (- rtip)) (dk3s_p (+ zt 14.0) (- (- rtip) 7.0)) 1 "Наконечник")
+  (dk3s_leader (dk3s_p (+ zc 1.0) rw) (dk3s_p (+ zc 2.0) (+ rtip 7.5)) 1 "Рабочий электрод")
+  (dk3s_leader (dk3s_p 6.5 (- rtap)) (dk3s_p 10.0 (- (- rtip) 13.0)) 1 "Токоотвод рабочего электрода")
   ;; заголовок вида
-  (dk3s_text (dk3s_p (/ zw 2.0) (+ rtip 14.0)) (* h 1.4) "А (2:1)" 0.0 3 g_dk3s_lay_text)
-  (dk3s_line (dk3s_p (- (/ zw 2.0) 7.0) (+ rtip 13.2)) (dk3s_p (+ (/ zw 2.0) 7.0) (+ rtip 13.2)) g_dk3s_lay_thin)
+  (dk3s_text (dk3s_p (/ zw 2.0) (+ rtip 16.0)) (* h 1.4) "А (2:1)" 0.0 3 g_dk3s_lay_text)
+  (dk3s_line (dk3s_p (- (/ zw 2.0) 7.0) (+ rtip 15.2)) (dk3s_p (+ (/ zw 2.0) 7.0) (+ rtip 15.2)) g_dk3s_lay_thin)
 )
 
 ;;; ---------------------------------------------------------------------------
@@ -938,7 +1039,9 @@
   (setq rs (/ g_dk3s_sleeve_d 2.0) re (/ g_dk3s_re_d 2.0) rp (/ g_dk3s_plate_d 2.0))
   (setq y1 -40.0 y2 -56.0 y3 -70.0 y4 -84.0)       ; уровни горизонтальных размеров (снизу)
   ;; перфорация: первое отверстие от вершины скобы и шаг
-  (dk3s_dim (dk3s_p 0.0 0.0) (dk3s_p g_dk3s_hole_z1 0.0) (dk3s_p 0.0 y1) 0.0 "")
+  ;; первое отверстие: между выносными число пересекла бы выносная размера гильзы — оно левее скобы
+  (dk3s_dim_t (dk3s_p 0.0 0.0) (dk3s_p g_dk3s_hole_z1 0.0) (dk3s_p 0.0 y1) 0.0 ""
+              (dk3s_dimtxt_h 0.0 y1 -1.0 (dk3s_num g_dk3s_hole_z1 1)))
   (dk3s_dim (dk3s_p g_dk3s_hole_z1 0.0) (dk3s_p (+ g_dk3s_hole_z1 g_dk3s_hole_pitch) 0.0) (dk3s_p 0.0 y1) 0.0 "")
   (dk3s_dim (dk3s_p (+ g_dk3s_hole_z1 g_dk3s_hole_pitch) 0.0)
             (dk3s_p (+ g_dk3s_hole_z1 (* 2.0 g_dk3s_hole_pitch)) 0.0) (dk3s_p 0.0 y1) 0.0 "")
@@ -952,19 +1055,33 @@
   (dk3s_dim (dk3s_p 0.0 (/ g_dk3s_guard_w 2.0)) (dk3s_p g_dk3s_z_sleeve (/ g_dk3s_guard_w 2.0))
             (dk3s_p 0.0 42.0) 0.0 "")
   ;; диаметры: гильза и присоединительная резьба M42x3 корпуса
-  (dk3s_dim (dk3s_p 130.0 rs) (dk3s_p 130.0 (- rs)) (dk3s_p 130.0 0.0) 90.0 "%%c<>")
-  (dk3s_dim (dk3s_p 246.0 (/ g_dk3s_shell_d 2.0)) (dk3s_p 246.0 (/ g_dk3s_shell_d -2.0)) (dk3s_p 246.0 0.0) 90.0
-            (strcat "M<>x" (dk3s_num g_dk3s_thread_pitch 0)))
+  (dk3s_dim (dk3s_p g_dk3s_zdim_sleeve rs) (dk3s_p g_dk3s_zdim_sleeve (- rs)) (dk3s_p g_dk3s_zdim_sleeve 0.0) 90.0
+            "%%c<>")
+  (dk3s_dim (dk3s_p g_dk3s_zdim_thread (/ g_dk3s_shell_d 2.0)) (dk3s_p g_dk3s_zdim_thread (/ g_dk3s_shell_d -2.0))
+            (dk3s_p g_dk3s_zdim_thread 0.0) 90.0 (strcat "M<>x" (dk3s_num g_dk3s_thread_pitch 0)))
   ;; размеры корпуса и гайки нажимной (Ø59, S46, M33x2, S36, Ø20,8) на общем виде не ставятся —
   ;; они на чертежах деталей 714.761.000 и 714.541.000 (решение 19.09.2026)
   (dk3s_dim (dk3s_p g_dk3s_z_shell (/ g_dk3s_shell_d -2.0)) (dk3s_p g_dk3s_z_cyl (/ g_dk3s_hex1_s -2.0)) (dk3s_p 0.0 -40.0) 0.0 "")
-  (dk3s_dim (dk3s_p 455.0 (/ g_dk3s_tube_d 2.0)) (dk3s_p 455.0 (/ g_dk3s_tube_d -2.0)) (dk3s_p 455.0 0.0) 90.0 "%%c<>")
-  (dk3s_dim (dk3s_p 440.0 (+ g_dk3s_se_r (/ g_dk3s_se_d 2.0))) (dk3s_p 440.0 (- g_dk3s_se_r (/ g_dk3s_se_d 2.0)))
-            (dk3s_p 440.0 g_dk3s_se_r) 90.0 "%%c<>")
+  ;; Ø6 трубки и Ø3 провода: между выносными число легло бы на линии — выносится за контур.
+  ;; Трубка идёт между двумя мостиками, поэтому число Ø6 — за мостиком (над верхним);
+  ;; Ø3 — под проводом (над ним до мостика тесно: число отодвигается за стрелку и её хвост)
+  (dk3s_dim_t (dk3s_p g_dk3s_zdim_tube (/ g_dk3s_tube_d 2.0)) (dk3s_p g_dk3s_zdim_tube (/ g_dk3s_tube_d -2.0))
+              (dk3s_p g_dk3s_zdim_tube 0.0) 90.0 "%%c<>"
+              (dk3s_dimtxt_v g_dk3s_zdim_tube (+ g_dk3s_bridge_r (/ g_dk3s_bridge_d 2.0)) 1.0
+                             (strcat "O" (dk3s_num g_dk3s_tube_d 0))))
+  (dk3s_dim_t (dk3s_p g_dk3s_zdim_wire (+ g_dk3s_se_r (/ g_dk3s_se_d 2.0)))
+              (dk3s_p g_dk3s_zdim_wire (- g_dk3s_se_r (/ g_dk3s_se_d 2.0)))
+              (dk3s_p g_dk3s_zdim_wire g_dk3s_se_r) 90.0 "%%c<>"
+              (dk3s_dimtxt_v g_dk3s_zdim_wire (- g_dk3s_se_r (/ g_dk3s_se_d 2.0)) -1.0
+                             (strcat "O" (dk3s_num g_dk3s_se_d 0))))
   ;; электроды сравнения: диаметр, длина, расстояние между осями
   (setq zre1 g_dk3s_z_re zre2 g_dk3s_z_re_end)
-  (dk3s_dim (dk3s_p 565.0 (+ g_dk3s_re_r re)) (dk3s_p 565.0 (- g_dk3s_re_r re)) (dk3s_p 565.0 g_dk3s_re_r) 90.0 "%%c<>")
-  (dk3s_dim (dk3s_p zre1 (+ g_dk3s_re_r re)) (dk3s_p zre2 (+ g_dk3s_re_r re)) (dk3s_p 0.0 (+ g_dk3s_re_r re 12.0)) 0.0 "")
+  ;; Ø20: число над верхним электродом (внутри корпуса оно во всю высоту, стрелки уходят наружу);
+  ;; длина 61,1 — между электродами, выносные от нижних углов верхнего
+  (dk3s_dim_t (dk3s_p g_dk3s_zdim_re (+ g_dk3s_re_r re)) (dk3s_p g_dk3s_zdim_re (- g_dk3s_re_r re))
+              (dk3s_p g_dk3s_zdim_re g_dk3s_re_r) 90.0 "%%c<>"
+              (dk3s_dimtxt_v g_dk3s_zdim_re (+ g_dk3s_re_r re) 1.0 (strcat "O" (dk3s_num g_dk3s_re_d 0))))
+  (dk3s_dim (dk3s_p zre1 (- g_dk3s_re_r re)) (dk3s_p zre2 (- g_dk3s_re_r re)) (dk3s_p 0.0 -3.0) 0.0 "")
   (dk3s_dim (dk3s_p (+ g_dk3s_z_total 4.0) g_dk3s_re_r) (dk3s_p (+ g_dk3s_z_total 4.0) (- g_dk3s_re_r))
             (dk3s_p (+ g_dk3s_z_total 14.0) 0.0) 90.0 "")
 )
@@ -1022,7 +1139,7 @@
   (setq lines (list
     "1. * Размеры для справок."
     "2. Рабочий электрод - проволока Ø1,4 мм, выступ 2 мм."
-    "3. Наконечник - шестигранник 1/4\", резьба токоотвода - шаг 0,5 мм."
+    "3. Наконечник и защитная трубка - фторопласт. Наконечник накручен на токоотвод (резьба M3x0,5), шестигранник 1/4\"; трубка надета на хвостовик наконечника с натягом."
     "4. Присоединение - резьба M42x3 в гнездо 713.165.001 входного узла фланца DN50."
     "5. Корпус, гайка нажимная, грундбукса - 08Х18Н10Т ГОСТ 5949-75 (черт. 714.761.000, 714.541.000, 711.171.000)."
     "6. Токоотводы: RE1 - синий, RE2 - белый, WE - красный, SE - чёрный."
@@ -1115,5 +1232,5 @@
   (princ)
 )
 
-(princ "\nDK3S v1.1.1 loaded. Command: DK3S")
+(princ "\nDK3S v1.2.0 loaded. Command: DK3S")
 (princ)

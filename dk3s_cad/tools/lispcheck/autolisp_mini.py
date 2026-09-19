@@ -854,9 +854,15 @@ class DxfBackend:
                 if style not in self.doc.dimstyles:
                     style = "Standard"
                 txt = decode_text(first(1, "")) or "<>"
+                loc = first(11) if int(first(70, 0)) & 128 else None     # число на заданном месте (группа 11)
                 dim = self.msp.add_linear_dim(base=first(10), p1=first(13), p2=first(14), angle=first(50, 0.0),
-                                              text=txt, dimstyle=style, dxfattribs=A)
+                                              location=loc, text=txt, dimstyle=style, dxfattribs=A)
+                # ezdxf при заданном месте числа пишет в размер переопределение DIMTMOVE 2 (без линии до числа);
+                # entmake в CAD его не создаёт — действует DIMTMOVE стиля
+                dim.dimstyle_attribs.pop("dimtmove", None)
                 dim.render()
+                if loc is not None:                 # рендер ezdxf переписывает группу 11 — вернуть заданную
+                    dim.dimension.dxf.text_midpoint = loc
                 self.last = dim.dimension
                 self.dims.append((first(13), first(14), first(10), first(50, 0.0), txt))
             elif etype == "LAYER":

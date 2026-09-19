@@ -4,8 +4,12 @@
 Ширина надписи оценивается с запасом по пропорциям шрифта ГОСТ 2.304 тип Б (так же, как dk3s_text_w
 в LISP): прописная 0,8h, строчная и цифра 0,7h, пробел 0,6h, узкие знаки 0,45h, знак номера 1,0h,
 плюс вынос наклона 15 градусов 0,27h; всё умножается на коэффициент ширины надписи (группа 41).
-Проверяются TEXT пространства модели против LINE, LWPOLYLINE, ARC, CIRCLE и других TEXT.
-Размеры (DIMENSION) не проверяются — их текст размещает CAD.
+Проверяются TEXT пространства модели и размерные числа против LINE, LWPOLYLINE, ARC, CIRCLE,
+линий размеров и других надписей. Размерные числа и линии берутся из блоков размеров — так, как их
+построил CAD: в DXF после пересчёта ODA (run_dk3s.py --oda) — так же, как их поставит nanoCAD;
+в DXF, где размеры нарисовал ezdxf, положение чисел может отличаться от nanoCAD.
+Своя размерная линия числу не мешает; линии других размеров, осевые и штриховка — нарушение
+(ГОСТ 2.307: размерные числа не пересекают никакие линии).
 
     python check_text_fit.py чертёж.dxf [--margin 0.1] [--list]
 Код возврата 0 — нарушений нет, 1 — есть (список печатается).
@@ -23,6 +27,8 @@ FONT_K = 1.08          # запас по ширине, как g_dk3s_font_k в L
 def char_w(c):
     if c == "№":
         return 1.0
+    if c == "Ø":
+        return 0.8
     if ("A" <= c <= "Z") or ("А" <= c <= "Я") or c == "Ё":
         return 0.8
     if c == " ":
@@ -48,6 +54,49 @@ def text_box(t, margin):
     a = math.radians(t.dxf.get("rotation", 0.0))
     ca, sa = math.cos(a), math.sin(a)
     return [(p.x + x * ca - y * sa, p.y + x * sa + y * ca) for x, y in loc]
+
+
+def mtext_box(e, margin):
+    """Прямоугольник размерного числа (MTEXT блока размера), как text_box."""
+    s = e.plain_text() if hasattr(e, "plain_text") else e.text
+    s = s.replace("%%c", "Ø").replace("%%C", "Ø").replace("%%d", "°").replace("%%p", "±")
+    h = e.dxf.char_height
+    w = h * (sum(char_w(c) for c in s) + 0.27) * FONT_K
+    ap_ = e.dxf.get("attachment_point", 1)
+    col, row = (ap_ - 1) % 3, (ap_ - 1) // 3
+    x0 = {0: 0.0, 1: -w / 2.0, 2: -w}[col]
+    y0 = {0: -h, 1: -h / 2.0, 2: 0.0}[row]
+    m = margin * h
+    mb = m if m > 0 else 0.1 * h          # со стороны размерной линии не расширяем
+    loc = [(x0 + m, y0 + mb), (x0 + w - m, y0 + mb), (x0 + w - m, y0 + h - m), (x0 + m, y0 + h - m)]
+    if e.dxf.hasattr("text_direction"):
+        d = e.dxf.text_direction
+        a = math.atan2(d.y, d.x)
+    else:
+        a = math.radians(e.dxf.get("rotation", 0.0))
+    ca, sa = math.cos(a), math.sin(a)
+    p = e.dxf.insert
+    return s, [(p.x + x * ca - y * sa, p.y + x * sa + y * ca) for x, y in loc]
+
+
+def dim_parts(msp, margin):
+    """Числа и отрезки размеров из их блоков: [(подпись, прямоугольник, номер)], [(p, q, источник, номер)]."""
+    texts, segs = [], []
+    for k, dim in enumerate(msp.query("DIMENSION")):
+        try:
+            ents = list(dim.virtual_entities())
+        except Exception:                     # размер без блока — CAD ещё не построил
+            continue
+        for e in ents:
+            t = e.dxftype()
+            if t == "MTEXT":
+                lab, box = mtext_box(e, margin)
+                texts.append((f"размер «{lab}»", box, k, e.dxf.insert))
+            elif t == "TEXT":
+                texts.append((f"размер «{e.dxf.text}»", text_box(e, margin), k, e.dxf.insert))
+            elif t == "LINE":
+                segs.append(((e.dxf.start.x, e.dxf.start.y), (e.dxf.end.x, e.dxf.end.y), f"линия размера {k}", k))
+    return texts, segs
 
 
 def seg_cross(p1, p2, q1, q2):
@@ -119,28 +168,32 @@ def main():
     doc = ezdxf.readfile(a.dxf)
     msp = doc.modelspace()
     texts = [t for t in msp.query("TEXT") if t.dxf.text.strip()]
-    boxes = [(t, text_box(t, a.margin)) for t in texts]
-    segs = segments(msp)
+    boxes = [(f"«{t.dxf.text}»", text_box(t, a.margin), None, t.dxf.insert) for t in texts]
+    dtexts, dsegs = dim_parts(msp, a.margin)
+    boxes += dtexts
+    segs = [(p, q, src, None) for p, q, src in segments(msp)] + dsegs
     bad = []
-    for t, b in boxes:
+    for lab, b, own, ins in boxes:
         xs, ys = [p[0] for p in b], [p[1] for p in b]
         bx0, bx1, by0, by1 = min(xs), max(xs), min(ys), max(ys)
-        for p, q, src in segs:
+        for p, q, src, owner in segs:
+            if own is not None and owner == own:
+                continue                      # своя размерная линия
             if max(p[0], q[0]) < bx0 or min(p[0], q[0]) > bx1 or max(p[1], q[1]) < by0 or min(p[1], q[1]) > by1:
                 continue
             if box_hit_seg(b, p, q):
-                bad.append(f"пересечение: «{t.dxf.text}» ({t.dxf.insert.x:.0f},{t.dxf.insert.y:.0f}) и {src} "
+                bad.append(f"пересечение: {lab} ({ins.x:.0f},{ins.y:.0f}) и {src} "
                            f"({p[0]:.0f},{p[1]:.0f})-({q[0]:.0f},{q[1]:.0f})")
                 break
     for i in range(len(boxes)):
         for j in range(i + 1, len(boxes)):
             if boxes_overlap(boxes[i][1], boxes[j][1]):
-                bad.append(f"наложение надписей: «{boxes[i][0].dxf.text}» и «{boxes[j][0].dxf.text}»")
+                bad.append(f"наложение надписей: {boxes[i][0]} и {boxes[j][0]}")
     if a.list:
-        for t, b in boxes:
+        for lab, b, own, ins in boxes:
             xs = [p[0] for p in b]
-            print(f"  «{t.dxf.text}» h={t.dxf.height:g} wf={t.dxf.get('width', 1.0):.2f} ширина~{max(xs)-min(xs):.1f}")
-    print(f"надписей: {len(texts)}, отрезков: {len(segs)}, нарушений: {len(bad)}")
+            print(f"  {lab} ширина~{max(xs)-min(xs):.1f}")
+    print(f"надписей: {len(texts)} + размерных чисел: {len(dtexts)}, отрезков: {len(segs)}, нарушений: {len(bad)}")
     for s in bad:
         print("  " + s)
     return 1 if bad else 0
