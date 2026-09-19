@@ -5,6 +5,9 @@
 выносной элемент А (2:1) с узлом рабочего электрода, технические требования.
 
 Результат прогона через проверочный интерпретатор (без CAD): `dk3s_drawing.dxf` и `dk3s_preview.png`.
+`src/dk3s_drawing_readable.lsp` - тот же исходник с читаемой кириллицей (для правки; в nanoCAD грузить `dk3s_drawing.lsp`,
+он получается из читаемого конвертером `tools/lisp_cyr_escape.py`). `sync_from_github.bat` - копирует папку и навык
+`.claude/skills/nanocad-lisp` из GitHub в локальную папку (например `G:\Мой диск\AutoCAD`).
 
 ## Запуск в nanoCAD
 
