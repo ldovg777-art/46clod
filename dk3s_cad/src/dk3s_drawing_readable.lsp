@@ -1,6 +1,6 @@
 ;;; ============================================================================
 ;;;  dk3s_drawing.lsp  —  Чертёж общего вида датчика концентрации ДК-3С-210АВ
-;;;  Версия: 1.2.0  (2026-09-19)
+;;;  Версия: 1.2.1  (2026-09-19)
 ;;;  Платформа: nanoCAD / AutoCAD / BricsCAD / ZWCAD (AutoLISP, только entmake)
 ;;;
 ;;;  Источник геометрии:
@@ -106,8 +106,9 @@
 (setq g_dk3s_z_tag_end    335.1)
 
 ;; --- Токоотводы, мостики, хомуты ----------------------------------------------
-(setq g_dk3s_bridge_d     3.2)     ; электролитический мостик (трубка)
-(setq g_dk3s_bridge_r     4.6)     ; ось мостика от оси датчика (прижат к трубке Ø6)
+(setq g_dk3s_bridge_d     6.0)     ; электролитический мостик — трубка Ø6, как трубка РЭ (K1, лист 16: развилка у ЭС)
+(setq g_dk3s_bridge_r     3.0)     ; ось мостика на виде: жгут — три трубки треугольником, мостики за трубкой РЭ,
+                                   ; из-за неё видна полоса 3 мм (контур жгута ±6)
 (setq g_dk3s_z_clamp1     367.0)   ; хомуты (начало), длина и диаметр
 (setq g_dk3s_z_clamp2     467.2)
 (setq g_dk3s_clamp_len    7.6)
@@ -880,23 +881,27 @@
 )
 
 ;; S-образный изгиб мостика: от (z1, r1) к (z2, r2), касательные вдоль оси;
-;; рисуются две образующие на расстоянии ±rb/2 от осевой линии
-(defun dk3s_draw_bend (z1 r1 z2 r2 rb / dx dy R th sgn c1 c2 a1 a2 hb)
+;; рисуются две образующие на расстоянии ±rb/2 от осевой линии. Мостик лежит за трубкой РЭ: внутренняя
+;; образующая первой дуги у начала закрыта трубкой и разъёмом РЭ и рисуется только с |r| >= rh
+(defun dk3s_draw_bend (z1 r1 z2 r2 rb rh / dx dy R th sgn c1 c2 a1 a2 hb cs ps)
   (setq dx (- z2 z1) dy (- r2 r1) sgn (if (< dy 0.0) -1.0 1.0) dy (abs dy) hb (/ rb 2.0))
   (setq R (/ (+ (* dx dx) (* dy dy)) (* 4.0 dy)))
   (setq th (dk3s_deg (atan (/ dx 2.0) (- R (/ dy 2.0)))))
+  ;; угол поворота по первой дуге, с которого внутренняя образующая выходит из-за разъёма: |r| = rh
+  (setq cs (/ (+ R (abs r1) (- rh)) (+ R hb)))
+  (setq ps (if (>= cs 1.0) 0.0 (dk3s_deg (atan (sqrt (- 1.0 (* cs cs))) cs))))
   ;; первая дуга: центр над началом (по направлению sgn), от 270° до 270°+th (при sgn>0)
   (setq c1 (dk3s_p z1 (+ r1 (* sgn R))) c2 (dk3s_p z2 (- r2 (* sgn R))))
   (if (> sgn 0.0)
     (progn
       (dk3s_arc c1 (dk3s_l (- R hb)) 270.0 (+ 270.0 th) g_dk3s_lay_main)
-      (dk3s_arc c1 (dk3s_l (+ R hb)) 270.0 (+ 270.0 th) g_dk3s_lay_main)
+      (if (< ps th) (dk3s_arc c1 (dk3s_l (+ R hb)) (+ 270.0 ps) (+ 270.0 th) g_dk3s_lay_main))
       (dk3s_arc c2 (dk3s_l (- R hb)) 90.0 (+ 90.0 th) g_dk3s_lay_main)
       (dk3s_arc c2 (dk3s_l (+ R hb)) 90.0 (+ 90.0 th) g_dk3s_lay_main)
     )
     (progn
       (dk3s_arc c1 (dk3s_l (- R hb)) (- 90.0 th) 90.0 g_dk3s_lay_main)
-      (dk3s_arc c1 (dk3s_l (+ R hb)) (- 90.0 th) 90.0 g_dk3s_lay_main)
+      (if (< ps th) (dk3s_arc c1 (dk3s_l (+ R hb)) (- 90.0 th) (- 90.0 ps) g_dk3s_lay_main))
       (dk3s_arc c2 (dk3s_l (- R hb)) (- 270.0 th) 270.0 g_dk3s_lay_main)
       (dk3s_arc c2 (dk3s_l (+ R hb)) (- 270.0 th) 270.0 g_dk3s_lay_main)
     )
@@ -938,8 +943,8 @@
   (dk3s_draw_gland)
   (dk3s_draw_bundle)
   (dk3s_draw_se)
-  (dk3s_draw_bend g_dk3s_z_bend g_dk3s_bridge_r g_dk3s_z_re g_dk3s_re_r g_dk3s_bridge_d)
-  (dk3s_draw_bend g_dk3s_z_bend (- g_dk3s_bridge_r) g_dk3s_z_re (- g_dk3s_re_r) g_dk3s_bridge_d)
+  (dk3s_draw_bend g_dk3s_z_bend g_dk3s_bridge_r g_dk3s_z_re g_dk3s_re_r g_dk3s_bridge_d (/ g_dk3s_conn_collar_d 2.0))
+  (dk3s_draw_bend g_dk3s_z_bend (- g_dk3s_bridge_r) g_dk3s_z_re (- g_dk3s_re_r) g_dk3s_bridge_d (/ g_dk3s_conn_collar_d 2.0))
   (dk3s_draw_re g_dk3s_re_r)
   (dk3s_draw_re (- g_dk3s_re_r))
 )
@@ -1119,8 +1124,8 @@
   (dk3s_leader (dk3s_p 530.0 rre)
                (dk3s_p 520.0 yc) 1 "Электрод сравнения (2 шт.)")
   ;; ряд D
-  (dk3s_leader (dk3s_p 470.0 (+ g_dk3s_bridge_r (/ g_dk3s_bridge_d 2.0)))
-               (dk3s_p 470.0 ye) -1 "Электролитический мостик (2 шт.)")
+  (dk3s_leader (dk3s_p 466.0 (+ g_dk3s_bridge_r (/ g_dk3s_bridge_d 2.0)))     ; на мостике перед хомутом
+               (dk3s_p 466.0 ye) -1 "Электролитический мостик (2 шт.)")
   (dk3s_leader (dk3s_p 488.0 (/ g_dk3s_conn_body_d 2.0))
                (dk3s_p 488.0 ye) 1 "Токоотвод рабочего электрода")
   ;; снизу, второй ряд
@@ -1232,5 +1237,5 @@
   (princ)
 )
 
-(princ "\nDK3S v1.2.0 loaded. Command: DK3S")
+(princ "\nDK3S v1.2.1 loaded. Command: DK3S")
 (princ)
