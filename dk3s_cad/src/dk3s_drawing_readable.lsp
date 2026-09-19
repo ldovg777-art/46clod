@@ -26,13 +26,15 @@
 (setq g_dk3s_sheet_h      297.0)
 (setq g_dk3s_scale_den    2.0)     ; знаменатель масштаба главного вида (1:2)
 (setq g_dk3s_detail_mul   4.0)     ; выносной элемент А: 4x в модели = 2:1 на листе
-(setq g_dk3s_font         "ISOCPEUR.ttf")   ; шрифт надписей (замена: "arial.ttf")
+(setq g_dk3s_font         "GOST.shx")       ; шрифт надписей как в чертежах ЭКОР (стиль GOST, наклон 15); замена: "ISOCPEUR.ttf"
 (setq g_dk3s_txt_h        3.5)     ; высота текста на бумаге, мм
-(setq g_dk3s_designation  "ЭКОР.ДК3С.210АВ.000 ВО")   ; обозначение (уточнить!)
+;; толщины линий (сотые мм) как в чертежах ЭКОР: контур 0,6; тонкие 0,3; рамка 0,6; размеры и текст 0,25
+(setq g_dk3s_lw_main 60)  (setq g_dk3s_lw_thin 30)  (setq g_dk3s_lw_frame 60)  (setq g_dk3s_lw_dim 25)
+(setq g_dk3s_designation  "302123.000 ВО")   ; обозначение: 302123.000 - перв. примен. деталей корпуса (уточнить!)
 (setq g_dk3s_name1        "Датчик концентрации")
 (setq g_dk3s_name2        "ДК-3С-210АВ")
 (setq g_dk3s_name3        "Общий вид")
-(setq g_dk3s_org          "ЭКОР, Львов")
+(setq g_dk3s_org          "ООО НТП \"Экор\", Львов")
 (setq g_dk3s_author       "")      ; Разраб. (фамилия)
 (setq g_dk3s_checker      "")      ; Пров.
 
@@ -64,29 +66,27 @@
 (setq g_dk3s_hole_n       3)       ; отверстий во фронтальном ряду
 (setq g_dk3s_hole_side_n  2)       ; боковых отверстий на сторону (в шахматном порядке)
 
-;; --- Корпус, фланец, сальниковая втулка ---------------------------------------
-(setq g_dk3s_z_shell      237.6)   ; начало корпуса (резьба M42x3)
-(setq g_dk3s_shell_d      42.0)    ; наружный диаметр резьбы M42x3
+;; --- Корпус 714.761.000 (S46, M42x3, фланец Ø59, длина 61), гайка нажимная 714.541.000 (S36, M33x2) ---
+(setq g_dk3s_z_shell      224.8)   ; торец резьбы M42x3 корпуса (правый торец корпуса 285.8, длина 61 h12)
+(setq g_dk3s_shell_d      42.0)    ; наружный диаметр резьбы M42x3-6f
 (setq g_dk3s_thread_pitch 3.0)
-(setq g_dk3s_shell_ch     2.0)     ; фаска корпуса
-(setq g_dk3s_z_relief     253.8)   ; начало проточки перед фланцем
+(setq g_dk3s_shell_ch     1.0)     ; фаска торца корпуса 1x45
+(setq g_dk3s_z_relief     253.8)   ; начало проточки перед фланцем (34 от торца до фланца)
 (setq g_dk3s_relief_d     39.0)
 (setq g_dk3s_z_plate      258.8)   ; фланец-пластина
 (setq g_dk3s_plate_d      59.0)
-(setq g_dk3s_z_hex1       265.8)   ; шестигранник S46
+(setq g_dk3s_z_hex1       265.8)   ; шестигранник S46 корпуса
 (setq g_dk3s_hex1_s       46.0)
 (setq g_dk3s_z_hex1_ch    283.7)   ; начало фаски S46
-(setq g_dk3s_z_cyl        285.8)   ; цилиндр Ø33
-(setq g_dk3s_cyl_d        33.0)
-(setq g_dk3s_z_groove     293.2)   ; шейка Ø28 с пояском Ø30
-(setq g_dk3s_groove_d     28.0)
-(setq g_dk3s_collar_d     30.0)
-(setq g_dk3s_z_collar1    293.8)
-(setq g_dk3s_z_collar2    295.6)
-(setq g_dk3s_z_hex2       296.6)   ; шестигранник S36
+(setq g_dk3s_z_cyl        285.8)   ; правый торец корпуса; далее видимая резьба M33x2 гайки нажимной
+(setq g_dk3s_cyl_d        33.0)    ; M33x2-6g гайки
+(setq g_dk3s_thread2_pitch 2.0)
+(setq g_dk3s_z_groove     293.2)   ; канавка Ø30 x 3 у шестигранника гайки
+(setq g_dk3s_groove_d     30.0)
+(setq g_dk3s_z_hex2       296.6)   ; шестигранник S36 гайки нажимной (10 с фаской)
 (setq g_dk3s_hex2_s       36.0)
 (setq g_dk3s_z_hex2_ch    305.0)
-(setq g_dk3s_z_neck       306.6)   ; шейка Ø20,8
+(setq g_dk3s_z_neck       306.6)   ; труба электродного узла Ø20,8 (проходит через гайку и грундбуксу)
 (setq g_dk3s_neck_d       20.8)
 (setq g_dk3s_z_step       314.6)   ; ступень Ø18,8
 (setq g_dk3s_step_d       18.8)
@@ -306,9 +306,9 @@
   (if (not (tblsearch "LTYPE" g_dk3s_ltype_axis))
     (if (not (entmake (list '(0 . "LTYPE") '(100 . "AcDbSymbolTableRecord")
                             '(100 . "AcDbLinetypeTableRecord") (cons 2 g_dk3s_ltype_axis)
-                            '(70 . 0) '(3 . "Osevaya ____ _ ____ _ ____") '(72 . 65) '(73 . 4)
-                            '(40 . 24.0) '(49 . 16.0) '(74 . 0) '(49 . -3.0) '(74 . 0)
-                            '(49 . 2.0) '(74 . 0) '(49 . -3.0) '(74 . 0))))
+                            '(70 . 0) '(3 . "GOST 2.303-5 ____ _ ____ _ ____") '(72 . 65) '(73 . 4)
+                            '(40 . 24.0) '(49 . 20.0) '(74 . 0) '(49 . -1.5) '(74 . 0)
+                            '(49 . 1.0) '(74 . 0) '(49 . -1.5) '(74 . 0))))
       (setq g_dk3s_ltype_axis "Continuous")   ; запасной вариант — сплошная
     )
   )
@@ -338,27 +338,27 @@
   )
 )
 
-;; Размерный стиль: текст 3,5, стрелки 2,5, DIMSCALE = знаменатель масштаба,
-;; десятичный разделитель — запятая, нули подавляются, текст над линией (ЕСКД)
+;; Размерный стиль как GOSTMTM/ЕСКД в чертежах ЭКОР: текст 3,5, стрелки 3,0, выносные 1,25,
+;; отступ 0,625, зазор 0,625, DIMSCALE = знаменатель масштаба, запятая, нули подавляются, текст над линией
 (defun dk3s_make_dimstyle ( / st lst)
   (if (not (tblsearch "DIMSTYLE" g_dk3s_dimstyle))
     (progn
       (setq lst (list '(0 . "DIMSTYLE") '(100 . "AcDbSymbolTableRecord")
                       '(100 . "AcDbDimStyleTableRecord") (cons 2 g_dk3s_dimstyle) '(70 . 0)
                       (cons 40 g_dk3s_scale_den)   ; DIMSCALE
-                      '(41 . 2.5)                  ; DIMASZ
-                      '(42 . 0.0)                  ; DIMEXO
+                      '(41 . 3.0)                  ; DIMASZ
+                      '(42 . 0.625)                ; DIMEXO
                       '(43 . 7.0)                  ; DIMDLI
-                      '(44 . 2.0)                  ; DIMEXE
+                      '(44 . 1.25)                 ; DIMEXE
                       (cons 140 g_dk3s_txt_h)      ; DIMTXT
                       '(144 . 1.0)                 ; DIMLFAC
-                      '(147 . 1.0)                 ; DIMGAP
+                      '(147 . 0.625)               ; DIMGAP
                       '(73 . 0) '(74 . 0)          ; DIMTIH DIMTOH — текст вдоль линии
                       '(77 . 1)                    ; DIMTAD — текст над линией
                       '(78 . 8)                    ; DIMZIN — без хвостовых нулей
                       '(271 . 1)                   ; DIMDEC — один знак
                       '(278 . 44)                  ; DIMDSEP — запятая
-                      '(279 . 0)                   ; DIMTMOVE
+                      '(279 . 1)                   ; DIMTMOVE
                       '(171 . 2) '(172 . 0) '(174 . 0) '(175 . 0) '(176 . 0) '(177 . 0)))
       (if (setq st (tblobjname "STYLE" g_dk3s_style))
         (setq lst (append lst (list (cons 340 st))))     ; DIMTXSTY
@@ -367,8 +367,8 @@
         (progn
           ;; запасной вариант: переменные текущего стиля + размеры командой
           (setq g_dk3s_dim_mode "command")
-          (setvar "DIMSCALE" g_dk3s_scale_den) (setvar "DIMASZ" 2.5) (setvar "DIMEXO" 0.0)
-          (setvar "DIMEXE" 2.0) (setvar "DIMTXT" g_dk3s_txt_h) (setvar "DIMGAP" 1.0)
+          (setvar "DIMSCALE" g_dk3s_scale_den) (setvar "DIMASZ" 3.0) (setvar "DIMEXO" 0.625)
+          (setvar "DIMEXE" 1.25) (setvar "DIMTXT" g_dk3s_txt_h) (setvar "DIMGAP" 0.625)
           (setvar "DIMTIH" 0) (setvar "DIMTOH" 0) (setvar "DIMTAD" 1) (setvar "DIMZIN" 8)
           (setvar "DIMDEC" 1) (setvar "DIMDSEP" ",") (setvar "DIMTXSTY" g_dk3s_style)
         )
@@ -427,11 +427,17 @@
 ;;;    Все размеры бумаги умножаются на g_dk3s_scale_den.
 ;;; ---------------------------------------------------------------------------
 
-;; Линия внутри основной надписи по координатам бумаги (мм от левого нижнего угла штампа)
+;; Линия внутри основной надписи по координатам бумаги (мм от левого нижнего угла штампа);
+;; основные (толстые) линии — слой рамки, тонкие (строки по 5 мм, подграфы) — тонкий слой
 (defun dk3s_tb_line (x1 y1 x2 y2)
   (dk3s_line (dk3s_ps (+ g_dk3s_tbx (* g_dk3s_scale_den x1)) (+ g_dk3s_tby (* g_dk3s_scale_den y1)))
              (dk3s_ps (+ g_dk3s_tbx (* g_dk3s_scale_den x2)) (+ g_dk3s_tby (* g_dk3s_scale_den y2)))
              g_dk3s_lay_frame)
+)
+(defun dk3s_tb_thin (x1 y1 x2 y2)
+  (dk3s_line (dk3s_ps (+ g_dk3s_tbx (* g_dk3s_scale_den x1)) (+ g_dk3s_tby (* g_dk3s_scale_den y1)))
+             (dk3s_ps (+ g_dk3s_tbx (* g_dk3s_scale_den x2)) (+ g_dk3s_tby (* g_dk3s_scale_den y2)))
+             g_dk3s_lay_thin)
 )
 
 ;; Текст в штампе: x,y — бумага (мм от угла штампа), h — высота на бумаге, just — как в dk3s_text
@@ -440,7 +446,7 @@
              (* h g_dk3s_scale_den) str 0.0 just g_dk3s_lay_text)
 )
 
-(defun dk3s_draw_frame ( / s w h x0 y0 x1 y1)
+(defun dk3s_draw_frame ( / s w h x0 y0 x1 y1 gx0 gx1)
   (setq s g_dk3s_scale_den w (* s g_dk3s_sheet_w) h (* s g_dk3s_sheet_h))
   ;; граница листа (тонкая) и рамка (основная): поля 20 слева, 5 остальные
   (dk3s_rect (dk3s_ps 0.0 0.0) (dk3s_ps w h) g_dk3s_lay_thin)
@@ -449,40 +455,60 @@
   ;; основная надпись — правый нижний угол рамки
   (setq g_dk3s_tbx (- x1 (* s 185.0)) g_dk3s_tby y0)
   (dk3s_tb_line 0.0 0.0 0.0 55.0)  (dk3s_tb_line 0.0 55.0 185.0 55.0)
-  ;; левая часть 65 мм: вертикали и горизонтали через 5
+  ;; левая часть 65 мм: вертикали основные, строки по 5 тонкие, граница табл. изменений основная
   (dk3s_tb_line 65.0 0.0 65.0 55.0)
   (dk3s_tb_line 7.0 30.0 7.0 55.0)   (dk3s_tb_line 17.0 0.0 17.0 55.0)
   (dk3s_tb_line 40.0 0.0 40.0 55.0)  (dk3s_tb_line 55.0 0.0 55.0 55.0)
-  (foreach yy '(5.0 10.0 15.0 20.0 25.0 30.0 35.0 40.0 45.0 50.0) (dk3s_tb_line 0.0 yy 65.0 yy))
+  (dk3s_tb_line 0.0 30.0 65.0 30.0)
+  (foreach yy '(5.0 10.0 15.0 20.0 25.0 35.0 40.0 45.0 50.0) (dk3s_tb_thin 0.0 yy 65.0 yy))
   ;; правая часть 120 мм
   (dk3s_tb_line 65.0 40.0 185.0 40.0)   ; низ графы обозначения
   (dk3s_tb_line 65.0 15.0 135.0 15.0)   ; низ графы наименования
   (dk3s_tb_line 135.0 0.0 135.0 40.0)
-  (dk3s_tb_line 135.0 35.0 185.0 35.0)  (dk3s_tb_line 135.0 30.0 185.0 30.0)
+  (dk3s_tb_line 135.0 35.0 185.0 35.0)  (dk3s_tb_thin 135.0 30.0 185.0 30.0)
   (dk3s_tb_line 135.0 25.0 185.0 25.0)
   (dk3s_tb_line 150.0 30.0 150.0 40.0)  (dk3s_tb_line 170.0 30.0 170.0 40.0)
-  (dk3s_tb_line 140.0 30.0 140.0 35.0)  (dk3s_tb_line 145.0 30.0 145.0 35.0)
-  (dk3s_tb_line 155.0 25.0 155.0 30.0)
-  ;; подписи граф (2,5 мм)
-  (dk3s_tb_text 3.5 31.2 2.5 "Изм." 3)      (dk3s_tb_text 12.0 31.2 2.5 "Лист" 3)
-  (dk3s_tb_text 28.5 31.2 2.5 "№ докум." 3) (dk3s_tb_text 47.5 31.2 2.5 "Подп." 3)
-  (dk3s_tb_text 60.0 31.2 2.5 "Дата" 3)
-  (dk3s_tb_text 1.0 26.2 2.5 "Разраб." 0)   (dk3s_tb_text 1.0 21.2 2.5 "Пров." 0)
-  (dk3s_tb_text 1.0 16.2 2.5 "Т.контр." 0)  (dk3s_tb_text 1.0 6.2 2.5 "Н.контр." 0)
-  (dk3s_tb_text 1.0 1.2 2.5 "Утв." 0)
-  (dk3s_tb_text 142.5 36.2 2.5 "Лит." 3)    (dk3s_tb_text 160.0 36.2 2.5 "Масса" 3)
-  (dk3s_tb_text 177.5 36.2 2.5 "Масштаб" 3)
-  (dk3s_tb_text 137.0 26.2 2.5 "Лист" 0)    (dk3s_tb_text 157.0 26.2 2.5 "Листов" 0)
+  (dk3s_tb_thin 140.0 30.0 140.0 35.0)  (dk3s_tb_thin 145.0 30.0 145.0 35.0)
+  (dk3s_tb_thin 155.0 25.0 155.0 30.0)
+  ;; подписи граф (3 мм, как в чертежах ЭКОР)
+  (dk3s_tb_text 3.5 31.0 3.0 "Изм." 3)      (dk3s_tb_text 12.0 31.0 3.0 "Лист" 3)
+  (dk3s_tb_text 28.5 31.0 3.0 "№ докум." 3) (dk3s_tb_text 47.5 31.0 3.0 "Подп." 3)
+  (dk3s_tb_text 60.0 31.0 3.0 "Дата" 3)
+  (dk3s_tb_text 1.0 26.0 3.0 "Разраб." 0)   (dk3s_tb_text 1.0 21.0 3.0 "Пров." 0)
+  (dk3s_tb_text 1.0 16.0 3.0 "Т.контр." 0)  (dk3s_tb_text 1.0 6.0 3.0 "Н.контр." 0)
+  (dk3s_tb_text 1.0 1.0 3.0 "Утв." 0)
+  (dk3s_tb_text 142.5 36.0 3.0 "Лит." 3)    (dk3s_tb_text 160.0 36.0 3.0 "Масса" 3)
+  (dk3s_tb_text 177.5 36.0 3.0 "Масштаб" 3)
+  (dk3s_tb_text 137.0 26.0 3.0 "Лист" 0)    (dk3s_tb_text 157.0 26.0 3.0 "Листов" 0)
+  ;; дополнительные графы (ГОСТ 2.104, форма 2): левое поле снизу вверх 25/35/25/25/35,
+  ;; сверху "Перв. примен." и "Справ. №" по 60; графа обозначения 70x14 на верхней рамке
+  (setq gx0 (* s 8.0) gx1 x0)
+  (dk3s_line (dk3s_ps gx0 y0) (dk3s_ps gx0 (+ y0 (* s 145.0))) g_dk3s_lay_frame)
+  (foreach yy '(25.0 60.0 85.0 110.0 145.0)
+    (dk3s_line (dk3s_ps gx0 (+ y0 (* s yy))) (dk3s_ps gx1 (+ y0 (* s yy))) g_dk3s_lay_frame))
+  (foreach g (list (list 12.5 "Инв. № подл.") (list 42.5 "Подп. и дата") (list 72.5 "Взам. инв. №")
+                   (list 97.5 "Инв. № дубл.") (list 127.5 "Подп. и дата"))
+    (dk3s_text (dk3s_ps (+ gx0 (* s 6.0)) (+ y0 (* s (car g)))) (* 2.5 s) (cadr g) 90.0 1 g_dk3s_lay_text))
+  (dk3s_line (dk3s_ps gx0 (- y1 (* s 120.0))) (dk3s_ps gx0 y1) g_dk3s_lay_frame)
+  (foreach yy '(60.0 120.0)
+    (dk3s_line (dk3s_ps gx0 (- y1 (* s yy))) (dk3s_ps gx1 (- y1 (* s yy))) g_dk3s_lay_frame))
+  (dk3s_text (dk3s_ps (+ gx0 (* s 6.0)) (- y1 (* s 30.0))) (* 2.5 s) "Перв. примен." 90.0 1 g_dk3s_lay_text)
+  (dk3s_text (dk3s_ps (+ gx0 (* s 6.0)) (- y1 (* s 90.0))) (* 2.5 s) "Справ. №" 90.0 1 g_dk3s_lay_text)
+  (dk3s_rect (dk3s_ps x0 (- y1 (* s 14.0))) (dk3s_ps (+ x0 (* s 70.0)) y1) g_dk3s_lay_frame)
+  (dk3s_text (dk3s_ps (+ x0 (* s 35.0)) (- y1 (* s 7.0))) (* 5.0 s) g_dk3s_designation 180.0 1 g_dk3s_lay_text)
+  ;; под основной надписью
+  (dk3s_text (dk3s_ps (+ g_dk3s_tbx (* s 100.0)) (- y0 (* s 4.0))) (* 2.5 s) "Копировал" 0.0 3 g_dk3s_lay_text)
+  (dk3s_text (dk3s_ps (+ g_dk3s_tbx (* s 165.0)) (- y0 (* s 4.0))) (* 2.5 s) "Формат А3" 0.0 3 g_dk3s_lay_text)
   ;; содержимое граф
   (dk3s_tb_text 125.0 45.5 5.0 g_dk3s_designation 3)
-  (dk3s_tb_text 100.0 32.5 3.5 g_dk3s_name1 3)
-  (dk3s_tb_text 100.0 26.0 3.5 g_dk3s_name2 3)
-  (dk3s_tb_text 100.0 18.0 3.5 g_dk3s_name3 3)
-  (dk3s_tb_text 177.5 31.0 3.5 (strcat "1:" (rtos g_dk3s_scale_den 2 0)) 3)
-  (dk3s_tb_text 148.0 26.2 2.5 "1" 0)       (dk3s_tb_text 173.0 26.2 2.5 "1" 0)
-  (dk3s_tb_text 160.0 10.0 3.5 g_dk3s_org 3)
-  (dk3s_tb_text 18.0 26.2 2.5 g_dk3s_author 0)
-  (dk3s_tb_text 18.0 21.2 2.5 g_dk3s_checker 0)
+  (dk3s_tb_text 100.0 33.5 4.0 g_dk3s_name1 3)
+  (dk3s_tb_text 100.0 26.0 4.0 g_dk3s_name2 3)
+  (dk3s_tb_text 100.0 18.5 4.0 g_dk3s_name3 3)
+  (dk3s_tb_text 177.5 30.5 5.0 (strcat "1:" (rtos g_dk3s_scale_den 2 0)) 3)
+  (dk3s_tb_text 148.0 26.0 3.0 "1" 0)       (dk3s_tb_text 175.0 26.0 3.0 "1" 0)
+  (dk3s_tb_text 160.0 10.0 4.0 g_dk3s_org 3)
+  (dk3s_tb_text 18.0 26.0 3.0 g_dk3s_author 0)
+  (dk3s_tb_text 18.0 21.0 3.0 g_dk3s_checker 0)
 )
 
 ;;; ---------------------------------------------------------------------------
@@ -595,7 +621,7 @@
 )
 
 ;; Корпус с резьбой, фланец, сальниковая втулка (шестигранники), шейка, бирка
-(defun dk3s_draw_gland ( / rs rr rp e1 e2 rc rg rk rn rst zsh d1 h)
+(defun dk3s_draw_gland ( / rs rr rp e1 e2 rc rg rn rst zsh d1 h)
   (setq rs (/ g_dk3s_shell_d 2.0) rr (/ g_dk3s_relief_d 2.0) rp (/ g_dk3s_plate_d 2.0))
   ;; корпус M42x3: торец с фаской, наружный диаметр, внутренний диаметр резьбы (тонкая)
   (setq zsh (+ g_dk3s_z_shell g_dk3s_shell_ch))
@@ -617,15 +643,14 @@
   ;; шестигранник S46 с фаской
   (setq e1 (dk3s_hex g_dk3s_z_hex1 g_dk3s_z_hex1_ch g_dk3s_hex1_s))
   (dk3s_hex_chamfer g_dk3s_z_hex1_ch g_dk3s_z_cyl e1 g_dk3s_hex1_s)
-  ;; цилиндр Ø33, шейка Ø28 с пояском Ø30
-  (setq rc (/ g_dk3s_cyl_d 2.0) rg (/ g_dk3s_groove_d 2.0) rk (/ g_dk3s_collar_d 2.0))
+  ;; видимая резьба M33x2 гайки нажимной (наружный Ø33, внутренний - тонкая линия) и канавка Ø30
+  (setq rc (/ g_dk3s_cyl_d 2.0) rg (/ g_dk3s_groove_d 2.0))
   (dk3s_cyl g_dk3s_z_cyl g_dk3s_z_groove rc 0.0)
+  (setq d1 (- g_dk3s_cyl_d (* 1.0825 g_dk3s_thread2_pitch)))
+  (dk3s_line (dk3s_p g_dk3s_z_cyl (/ d1 2.0)) (dk3s_p g_dk3s_z_groove (/ d1 2.0)) g_dk3s_lay_thin)
+  (dk3s_line (dk3s_p g_dk3s_z_cyl (/ d1 -2.0)) (dk3s_p g_dk3s_z_groove (/ d1 -2.0)) g_dk3s_lay_thin)
   (dk3s_face g_dk3s_z_groove (- rc) rc)
-  (dk3s_cyl g_dk3s_z_groove g_dk3s_z_collar1 rg 0.0)
-  (dk3s_face g_dk3s_z_collar1 (- rk) rk)
-  (dk3s_cyl g_dk3s_z_collar1 g_dk3s_z_collar2 rk 0.0)
-  (dk3s_face g_dk3s_z_collar2 (- rk) rk)
-  (dk3s_cyl g_dk3s_z_collar2 g_dk3s_z_hex2 rg 0.0)
+  (dk3s_cyl g_dk3s_z_groove g_dk3s_z_hex2 rg 0.0)
   ;; шестигранник S36 с фаской
   (setq e2 (dk3s_hex g_dk3s_z_hex2 g_dk3s_z_hex2_ch g_dk3s_hex2_s))
   (dk3s_hex_chamfer g_dk3s_z_hex2_ch g_dk3s_z_neck e2 g_dk3s_hex2_s)
@@ -841,6 +866,10 @@
   (setq zh1 (/ (+ g_dk3s_z_hex1 g_dk3s_z_hex1_ch) 2.0) zh2 (/ (+ g_dk3s_z_hex2 g_dk3s_z_hex2_ch) 2.0))
   (dk3s_dim (dk3s_p zh1 (/ g_dk3s_hex1_s 2.0)) (dk3s_p zh1 (/ g_dk3s_hex1_s -2.0)) (dk3s_p zh1 0.0) 90.0 "S<>")
   (dk3s_dim (dk3s_p zh2 (/ g_dk3s_hex2_s 2.0)) (dk3s_p zh2 (/ g_dk3s_hex2_s -2.0)) (dk3s_p zh2 0.0) 90.0 "S<>")
+  (dk3s_dim (dk3s_p 289.5 (/ g_dk3s_cyl_d 2.0)) (dk3s_p 289.5 (/ g_dk3s_cyl_d -2.0)) (dk3s_p 289.5 0.0) 90.0
+            (strcat "M<>x" (dk3s_num g_dk3s_thread2_pitch 0)))
+  (dk3s_dim (dk3s_p 310.6 (/ g_dk3s_neck_d 2.0)) (dk3s_p 310.6 (/ g_dk3s_neck_d -2.0)) (dk3s_p 310.6 0.0) 90.0 "%%c<>")
+  (dk3s_dim (dk3s_p g_dk3s_z_shell (/ g_dk3s_shell_d -2.0)) (dk3s_p g_dk3s_z_cyl (/ g_dk3s_hex1_s -2.0)) (dk3s_p 0.0 -40.0) 0.0 "")
   (dk3s_dim (dk3s_p 455.0 (/ g_dk3s_tube_d 2.0)) (dk3s_p 455.0 (/ g_dk3s_tube_d -2.0)) (dk3s_p 455.0 0.0) 90.0 "%%c<>")
   (dk3s_dim (dk3s_p 440.0 (+ g_dk3s_se_r (/ g_dk3s_se_d 2.0))) (dk3s_p 440.0 (- g_dk3s_se_r (/ g_dk3s_se_d 2.0)))
             (dk3s_p 440.0 g_dk3s_se_r) 90.0 "%%c<>")
@@ -859,20 +888,20 @@
   ;; ряд A
   (dk3s_leader (dk3s_p (- g_dk3s_z_sleeve 2.0) (+ g_dk3s_tip_off (/ g_dk3s_tip_d 2.0)))
                (dk3s_p 22.0 ya) 1 "Наконечник (см. А)")
-  (dk3s_leader (dk3s_p 250.0 (/ g_dk3s_shell_d 2.0)) (dk3s_p 236.0 ya) 1 "Корпус")
+  (dk3s_leader (dk3s_p 250.0 (/ g_dk3s_shell_d 2.0)) (dk3s_p 226.0 ya) 1 "Корпус 714.761.000")
   (dk3s_leader (dk3s_p (+ g_dk3s_z_clamp1 3.8) rc) (dk3s_p 372.0 ya) 1 "Хомут")
   (dk3s_leader (dk3s_p 492.0 (/ g_dk3s_conn_body_d 2.0)) (dk3s_p 455.0 ya) 1 "Токоотвод рабочего электрода")
   ;; ряд B
   (dk3s_leader (dk3s_p 150.0 rs) (dk3s_p 120.0 yb) 1 "Защитная гильза")
-  (dk3s_leader (dk3s_p 300.8 (/ e2 2.0)) (dk3s_p 282.0 yb) 1 "Сальниковая втулка")
+  (dk3s_leader (dk3s_p 300.8 (/ e2 2.0)) (dk3s_p 284.0 yb) 1 "Гайка нажимная")
   (dk3s_leader (dk3s_p 430.0 (+ g_dk3s_bridge_r (/ g_dk3s_bridge_d 2.0))) (dk3s_p 400.0 yb) 1
                "Электролитический мостик (2 шт.)")
-  (dk3s_leader (dk3s_p 605.0 (+ g_dk3s_re_r (/ g_dk3s_conn_pin_d 2.0))) (dk3s_p 590.0 yb) 1
+  (dk3s_leader (dk3s_p 605.0 (- (- g_dk3s_re_r) (/ g_dk3s_conn_pin_d 2.0))) (dk3s_p 530.0 -46.0) 1
                "Токоотвод электрода сравнения")
   ;; ряд C
   (dk3s_leader (dk3s_p 8.0 (/ g_dk3s_guard_w 2.0)) (dk3s_p -12.0 yc) 1 "Защитная скоба")
-  (dk3s_leader (dk3s_p 262.3 rp) (dk3s_p 256.0 yc) 1 "Фланец")
-  (dk3s_leader (dk3s_p 330.0 (/ g_dk3s_tag_w 2.0)) (dk3s_p 320.0 yc) 1 "Бирка с заводским номером")
+  (dk3s_leader (dk3s_p 262.3 rp) (dk3s_p 250.0 yc) 1 "Фланец корпуса")
+  (dk3s_leader (dk3s_p 330.0 (/ g_dk3s_tag_w 2.0)) (dk3s_p 336.0 yc) 1 "Бирка с заводским номером")
   (dk3s_leader (dk3s_p 560.0 rre) (dk3s_p 520.0 yc) 1 "Электрод сравнения (2 шт.)")
   ;; снизу
   (dk3s_leader (dk3s_p 400.0 (- g_dk3s_se_r (/ g_dk3s_se_d 2.0))) (dk3s_p 330.0 -46.0) 1
@@ -889,9 +918,10 @@
     "1. * Размеры для справок."
     "2. Рабочий электрод - проволока Ø1,4 мм, выступ 2 мм."
     "3. Наконечник - шестигранник 1/4\", резьба токоотвода - шаг 0,5 мм."
-    "4. Присоединение - резьба M42x3 входного узла фланца DN50."
-    "5. Токоотводы: RE1 - синий, RE2 - белый, WE - красный, SE - чёрный."
-    "6. Геометрия - по монтажному чертежу техописания K1 (лист 16)."))
+    "4. Присоединение - резьба M42x3 в гнездо 713.165.001 входного узла фланца DN50."
+    "5. Корпус, гайка нажимная, грундбукса - 08Х18Н10Т ГОСТ 5949-75 (черт. 714.761.000, 714.541.000, 711.171.000)."
+    "6. Токоотводы: RE1 - синий, RE2 - белый, WE - красный, SE - чёрный."
+    "7. Геометрия - по монтажному чертежу техописания K1 (лист 16) и чертежам деталей ЭКОР."))
   (setq i 0)
   (foreach s lines
     (dk3s_text (dk3s_ps x (- y (* i dy))) h s 0.0 0 g_dk3s_lay_text)
@@ -930,12 +960,12 @@
 
   (setq g_dk3s_stage "TABLES")
   (dk3s_make_ltype)
-  (dk3s_make_layer g_dk3s_lay_main  7 "Continuous" 50)
-  (dk3s_make_layer g_dk3s_lay_thin  8 "Continuous" 25)
-  (dk3s_make_layer g_dk3s_lay_axis  1 g_dk3s_ltype_axis 25)
-  (dk3s_make_layer g_dk3s_lay_dim   4 "Continuous" 25)
-  (dk3s_make_layer g_dk3s_lay_text  2 "Continuous" 25)
-  (dk3s_make_layer g_dk3s_lay_frame 7 "Continuous" 70)
+  (dk3s_make_layer g_dk3s_lay_main  7 "Continuous" g_dk3s_lw_main)
+  (dk3s_make_layer g_dk3s_lay_thin  8 "Continuous" g_dk3s_lw_thin)
+  (dk3s_make_layer g_dk3s_lay_axis  1 g_dk3s_ltype_axis g_dk3s_lw_thin)
+  (dk3s_make_layer g_dk3s_lay_dim   4 "Continuous" g_dk3s_lw_dim)
+  (dk3s_make_layer g_dk3s_lay_text  2 "Continuous" g_dk3s_lw_dim)
+  (dk3s_make_layer g_dk3s_lay_frame 7 "Continuous" g_dk3s_lw_frame)
   (dk3s_make_style)
   (dk3s_make_dimstyle)
 
@@ -943,7 +973,7 @@
   (dk3s_draw_frame)
 
   (setq g_dk3s_stage "MAIN")
-  (setq g_dk3s_ox (* s 45.0) g_dk3s_oy (* s 220.0) g_dk3s_k 1.0)   ; начало главного вида
+  (setq g_dk3s_ox (* s 48.0) g_dk3s_oy (* s 215.0) g_dk3s_k 1.0)   ; начало главного вида
   (dk3s_draw_main_view)
 
   (setq g_dk3s_stage "DIMS")
