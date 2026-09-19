@@ -111,7 +111,10 @@ def main():
     print("saved", dxf)
     if not args.no_png:
         png = os.path.join(args.out, "dk3s_preview.png")
-        backend.render_png(png, width_px=args.png_width)
+        from ezdxf import bbox                       # границы — по габариту листа (А3, А2 ...), с полем 10
+        e = bbox.extents(backend.msp, fast=True)
+        backend.render_png(png, width_px=args.png_width, xlim=(e.extmin.x - 10, e.extmax.x + 10),
+                           ylim=(e.extmin.y - 10, e.extmax.y + 10))
         print("saved", png)
 
 
