@@ -1,6 +1,6 @@
 ;;; ============================================================================
 ;;;  dk3s_drawing.lsp  —  Чертёж общего вида датчика концентрации ДК-3С-210АВ
-;;;  Версия: 1.0  (2026-09-19)
+;;;  Версия: 1.0.1  (2026-09-19)
 ;;;  Платформа: nanoCAD / AutoCAD / BricsCAD / ZWCAD (AutoLISP, только entmake)
 ;;;
 ;;;  Источник геометрии:
@@ -26,7 +26,8 @@
 (setq g_dk3s_sheet_h      297.0)
 (setq g_dk3s_scale_den    2.0)     ; знаменатель масштаба главного вида (1:2)
 (setq g_dk3s_detail_mul   4.0)     ; выносной элемент А: 4x в модели = 2:1 на листе
-(setq g_dk3s_font         "GOST.shx")       ; шрифт надписей как в чертежах ЭКОР (стиль GOST, наклон 15); замена: "ISOCPEUR.ttf"
+(setq g_dk3s_font         "GOST.shx")       ; шрифт надписей как в чертежах ЭКОР (стиль GOST, наклон 15); в поставке nanoCAD его нет:
+                                           ; скопировать GOST.shx в C:\ProgramData\Nanosoft\nanoCAD XX\SHX или поставить "CS_Gost2304.shx"
 (setq g_dk3s_txt_h        3.5)     ; высота текста на бумаге, мм
 ;; толщины линий (сотые мм) как в чертежах ЭКОР: контур 0,6; тонкие 0,3; рамка 0,6; размеры и текст 0,25
 (setq g_dk3s_lw_main 60)  (setq g_dk3s_lw_thin 30)  (setq g_dk3s_lw_frame 60)  (setq g_dk3s_lw_dim 25)
@@ -998,5 +999,5 @@
   (princ)
 )
 
-(princ "\nDK3S v1.0 loaded. Command: DK3S")
+(princ "\nDK3S v1.0.1 loaded. Command: DK3S")
 (princ)
