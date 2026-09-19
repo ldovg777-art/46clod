@@ -4,21 +4,28 @@
 Строит модель sensor_model.build() и тесселирует каждую деталь ПО ГРАНЯМ (face.tessellate): внутри грани
 нормали сглаживаются, на рёбрах между гранями остаются острыми. Детали из m.CUT_PARTS выгружаются дважды —
 целиком и с вырезом четверти, как в sensor_iso_fc.py (s.cut(box): настоящие тела с гранями сечения, не клиппинг).
-Координаты — Float32Array, индексы — Uint16/Uint32, всё в base64 внутри HTML. three.js подключается importmap'ом
-с cdn.jsdelivr.net — при открытии страницы нужен интернет; сам скрипт ничего не скачивает.
+Координаты — Float32Array, индексы — Uint16/Uint32, всё в base64 внутри HTML.
+
+Файл АВТОНОМНЫЙ (интернет не нужен, открывается и на телефоне): three.js 0.160.0 (three.module.min.js и
+OrbitControls.js, лицензия MIT) встроен в страницу base64-блоками; при открытии из них делаются Blob-URL модулей
+(импорт 'three' в OrbitControls подменяется на Blob-URL three) — так работает и на file://, и на content:// Android.
+Библиотека берётся из vendor/three-0.160.0 рядом со скриптом; перед сборкой размеры и sha256 сверяются с
+vendor/three-0.160.0/SOURCES.txt (там же адреса и дата скачивания), сам скрипт в сеть не ходит.
+Страница с параметром ?thumb=1 показывает только модель (без панелей) — для миниатюры галереи.
 
 Запуск (путь вывода — через переменную окружения: лишние аргументы freecadcmd пытается открыть как файлы):
     set DK3S_HTML_OUT=C:/путь/Датчик_ДК-3С_3D.html
     "C:/Users/<user>/AppData/Local/Programs/FreeCAD 1.1/bin/freecadcmd.exe" export_3d_html.py
 Без переменной — sys.argv[-1], если он оканчивается на .html, иначе Датчик_ДК-3С_3D.html в текущей папке.
 Допуски тесселяции: DK3S_LIN — линейный, мм (по умолчанию 0.01), DK3S_ANG — угловой, градусы (по умолчанию 8).
-При 0.01 / 8° окружности делятся на 90–120 отрезков, всего около 83 тыс. треугольников, HTML около 1,7 МБ
-(19.09.2026: сборка 1,3 с; объём сеток совпадает с объёмом тел до 0,09 %).
+При 0.01 / 8° окружности делятся на 90–120 отрезков, всего около 84 тыс. треугольников; HTML около 2,7 МБ, из них
+three.js около 0,9 МБ (19.09.2026: сборка 1,3 с; объём сеток совпадает с объёмом тел до 0,09 %).
 Если скрипт запускает кто-то, кроме пользователя, пока модель правят параллельно: freecadcmd импортирует файл как
 модуль и пишет __pycache__ рядом — запускать через exec из своей папки (см. html3d_work/run_export.py сессии 19.09).
 """
 import base64
 import datetime
+import hashlib
 import json
 import math
 import os
@@ -37,7 +44,8 @@ import numpy as np  # noqa: E402
 import sensor_model as m  # noqa: E402
 
 V = App.Vector
-THREE_VER = "0.160.0"                   # версия three.js на cdn.jsdelivr.net
+THREE_VER = "0.160.0"                   # версия встроенной three.js
+VENDOR = os.path.join(HERE, "vendor", "three-" + THREE_VER)   # three.module.min.js, OrbitControls.js, LICENSE
 MODEL_VERSION = "v1.3.2"                # последняя правка геометрии sensor_model.py (узел сальника без зазоров)
 LIN = float(os.environ.get("DK3S_LIN", "0.01"))
 ANG = float(os.environ.get("DK3S_ANG", "8"))
@@ -198,9 +206,37 @@ def split_contacts(P):
     return Q
 
 
+def load_vendor():
+    """three.js из vendor/three-X: файлы и их sha256/размеры из SOURCES.txt (строки «файл | адрес | размер | sha256»).
+    Несовпадение — ошибка: в HTML попадает ровно то, что записано в SOURCES.txt."""
+    table = {}
+    with open(os.path.join(VENDOR, "SOURCES.txt"), encoding="utf-8") as f:
+        for line in f:
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) == 4 and re.fullmatch(r"[0-9a-f]{64}", parts[3]):
+                table[parts[0]] = (parts[1], int(parts[2]), parts[3])
+    out = {}
+    for name in ("three.module.min.js", "OrbitControls.js", "LICENSE"):
+        with open(os.path.join(VENDOR, name), "rb") as f:
+            raw = f.read()
+        url, size, sha = table[name]
+        got = hashlib.sha256(raw).hexdigest()
+        assert len(raw) == size and got == sha, ("vendor file differs from SOURCES.txt", name, len(raw), got)
+        out[name] = raw
+        print("VENDOR %-20s %7d bytes sha256 %s... OK (%s)" % (name, len(raw), sha[:16], url))
+    orbit = out["OrbitControls.js"].decode("utf-8")
+    # подмена импорта в браузере рассчитана на единственный импорт from 'three' — проверить заранее
+    assert len(re.findall(r"from\s*(['\"])three\1", orbit)) == 1, "OrbitControls: ожидался один импорт from 'three'"
+    assert not re.search(r"\bimport\s*\(|from\s*['\"](?!three['\"])", orbit), "OrbitControls: лишние импорты"
+    assert not re.search(r"(^|[;\s])import[\s{*]|\bimport\s*\(", out["three.module.min.js"].decode("utf-8")), \
+        "three.module.min.js не самодостаточен (есть import)"
+    return out
+
+
 def main():
     t0 = time.time()
     dst = out_path()
+    lib = load_vendor()
     P = split_contacts(m.build())
     keys = [p[0] for p in PARTS]
     assert sorted(keys) == sorted(P.keys()), ("parts mismatch", sorted(P.keys()))
@@ -232,8 +268,14 @@ def main():
             "edgeAngle": EDGE_ANGLE, "groups": GROUPS, "groupNotes": GROUP_NOTES, "cutParts": list(m.CUT_PARTS),
             "triangles": tot_t, "parts": parts}
     js = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
-    html = (TEMPLATE.replace("__THREE_VER__", THREE_VER).replace("__VERSION__", ver)
-            .replace("__BUILT__", built).replace("__DATA__", js))
+    lic = lib["LICENSE"].decode("utf-8").replace("<", "&lt;")
+    html = (TEMPLATE.replace("__THREE_VER__", THREE_VER).replace("__VERSION__", ver).replace("__BUILT__", built)
+            .replace("__LIC_THREE__", lic)
+            .replace("__LIB_THREE__", base64.b64encode(lib["three.module.min.js"]).decode("ascii"))
+            .replace("__LIB_ORBIT__", base64.b64encode(lib["OrbitControls.js"]).decode("ascii"))
+            .replace("__DATA__", js))
+    left = re.findall(r"__(?:THREE_VER|VERSION|BUILT|LIC_THREE|LIB_THREE|LIB_ORBIT|DATA)__", html)
+    assert not left, ("placeholders left", left)
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     with open(dst, "w", encoding="utf-8", newline="\n") as f:
         f.write(html)
@@ -249,6 +291,14 @@ TEMPLATE = r"""<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Датчик ДК-3С-210АВ — 3D-модель</title>
+<script>
+  // ?thumb=1 — только модель, без панелей (миниатюра для галереи)
+  if (/[?&]thumb(=|&|$)/.test(location.search)) document.documentElement.className += ' thumb';
+</script>
+<noscript><style>
+  .status, .toolbar, .side { display: none !important; }
+  .app { grid-template-columns: minmax(0, 1fr) !important; }
+</style></noscript>
 <style>
   :root {
     --bg: #eef0f3; --panel: #ffffff; --ink: #1d232b; --muted: #5f6773;
@@ -340,6 +390,15 @@ TEMPLATE = r"""<!DOCTYPE html>
     .side { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
     footer { padding: 6px 12px; }
   }
+  .noscript {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    padding: 24px; text-align: center; font-size: 17px; line-height: 1.5; color: #9b2c2c;
+  }
+  /* миниатюра: только модель на светлом фоне */
+  .thumb header, .thumb .toolbar, .thumb .side, .thumb footer, .thumb .hint, .thumb .status { display: none !important; }
+  .thumb body { height: 100vh; overflow: hidden; }
+  .thumb .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+  .thumb .view { flex: none; height: 100vh; min-height: 0; }
 </style>
 </head>
 <body>
@@ -355,7 +414,8 @@ TEMPLATE = r"""<!DOCTYPE html>
       <label class="toggle" title="Корпусные детали — с вырезанной четвертью"><input type="checkbox" id="cut" checked> Вырез четверти</label>
     </div>
     <div class="view" id="view">
-      <div class="status" id="status">Загрузка библиотеки three.js…</div>
+      <div class="status" id="status">Загрузка 3D-модели…</div>
+      <noscript><div class="noscript">Откройте файл в браузере (Chrome, Safari), а не в просмотре мессенджера.</div></noscript>
       <div class="hint" id="hint" hidden>
         <span class="mouse">Левая кнопка мыши — вращение · колесо — масштаб · правая кнопка — сдвиг · двойной щелчок — центр вращения в эту точку</span>
         <span class="touch">Один палец — вращение · два пальца — масштаб и сдвиг</span>
@@ -370,19 +430,38 @@ TEMPLATE = r"""<!DOCTYPE html>
       Плоскости разреза чуть темнее.</p>
     <p class="note">Вырез рассекает гильзу, корпус, втулку, грундбуксу, гровер и гайку; трубки, мостики и скобу
       не рассекает (ГОСТ 2.305).</p>
+    <p class="note">Файл автономный: библиотека three.js __THREE_VER__ (лицензия MIT) встроена в страницу, интернет
+      не нужен.</p>
   </aside>
 </main>
 <footer>Модель: dk3s_cad/tools/iso/sensor_model.py (__VERSION__). Внутри гильзы трубки показаны условно. Файл собран __BUILT__.</footer>
 
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@__THREE_VER__/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@__THREE_VER__/examples/jsm/"
-  }
-}
+<!-- three.js __THREE_VER__ (three.module.min.js, examples/jsm/controls/OrbitControls.js) встроен в страницу: base64 ниже,
+     при открытии из него делаются Blob-URL модулей. Лицензия three.js (MIT) — в блоке lic-three. -->
+<script type="text/plain" id="lic-three">
+__LIC_THREE__
 </script>
+<script type="text/plain" id="lib-three">__LIB_THREE__</script>
+<script type="text/plain" id="lib-orbit">__LIB_ORBIT__</script>
 <script type="application/json" id="dk3s-data">__DATA__</script>
+<script nomodule>
+  // браузер без модулей JavaScript (очень старый или урезанный просмотрщик)
+  (function () {
+    var s = document.getElementById('status');
+    s.textContent = 'Этот просмотрщик не может показать 3D-модель. Откройте файл в браузере (Chrome, Safari), а не в просмотре мессенджера.';
+    s.className = 'status err';
+  })();
+</script>
+<script>
+  // сторож: если за 20 с модель не запустилась (просмотрщик режет модули или Blob-URL) — подсказать, что делать
+  setTimeout(function () {
+    var s = document.getElementById('status');
+    if (window.dk3s || !s || s.className.indexOf('err') >= 0) return;
+    s.textContent = 'Не удалось запустить 3D-просмотр в этом окне. Откройте файл в браузере (Chrome, Safari), а не в просмотре мессенджера.';
+    s.className = 'status err';
+    s.hidden = false;
+  }, 20000);
+</script>
 <script type="module">
 const statusEl = document.getElementById('status');
 function showStatus(text, isError) {
@@ -392,22 +471,36 @@ function showStatus(text, isError) {
 }
 function why(e) { return e && e.message ? e.message : String(e); }
 
-function b64buf(s) {
-  const bin = atob(s);
+function b64bytes(s) {
+  const bin = atob(s.trim());
   const n = bin.length;
   const u8 = new Uint8Array(n);
   for (let i = 0; i < n; i++) u8[i] = bin.charCodeAt(i);
-  return u8.buffer;
+  return u8;
+}
+function b64buf(s) { return b64bytes(s).buffer; }
+
+// three.js и OrbitControls встроены в страницу: модули запускаются из Blob-URL (сеть не нужна; работает на file://
+// и content:// — Blob-URL того же происхождения, что и страница). Импорт 'three' в OrbitControls — на Blob-URL three.
+async function loadLibs() {
+  const dec = new TextDecoder('utf-8');
+  const jsUrl = (text) => URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));
+  const threeUrl = jsUrl(dec.decode(b64bytes(document.getElementById('lib-three').textContent)));
+  const orbitSrc = dec.decode(b64bytes(document.getElementById('lib-orbit').textContent))
+    .replace(/(from\s*)(['"])three\2/g, (m0, a) => a + JSON.stringify(threeUrl));
+  if (orbitSrc.indexOf(threeUrl) < 0) throw new Error('в OrbitControls не найден импорт three');
+  const THREE = await import(threeUrl);
+  const { OrbitControls } = await import(jsUrl(orbitSrc));
+  return { THREE, OrbitControls };
 }
 
 async function main() {
   let THREE, OrbitControls;
   try {
-    THREE = await import('three');
-    ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
+    ({ THREE, OrbitControls } = await loadLibs());
   } catch (e) {
-    showStatus('Не удалось загрузить библиотеку three.js с cdn.jsdelivr.net. При открытии страницы нужен интернет ' +
-      'и современный браузер (Chrome, Edge, Firefox или Safari не старше 2023 г.). Причина: ' + why(e), true);
+    showStatus('Не удалось запустить встроенную библиотеку 3D-графики. Откройте файл в браузере (Chrome, Safari), ' +
+      'а не в просмотре мессенджера. Причина: ' + why(e), true);
     return;
   }
   showStatus('Построение модели…');
