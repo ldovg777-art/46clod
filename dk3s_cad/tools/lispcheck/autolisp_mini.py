@@ -834,6 +834,8 @@ class DxfBackend:
                 if style not in self.doc.styles:
                     style = "Standard"
                 A.update({"style": style})
+                if first(41) is not None:          # коэффициент ширины (сжатие надписи)
+                    A["width"] = float(first(41))
                 if etype == "TEXT":
                     hj, vj = first(72, 0), first(73, 0)
                     align = {(0, 0): TA.LEFT, (1, 0): TA.CENTER, (2, 0): TA.RIGHT, (1, 2): TA.MIDDLE_CENTER,

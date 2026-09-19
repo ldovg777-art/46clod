@@ -1,6 +1,6 @@
 ;;; ============================================================================
 ;;;  dk3s_drawing.lsp  —  Чертёж общего вида датчика концентрации ДК-3С-210АВ
-;;;  Версия: 1.0.1  (2026-09-19)
+;;;  Версия: 1.1.0  (2026-09-19)
 ;;;  Платформа: nanoCAD / AutoCAD / BricsCAD / ZWCAD (AutoLISP, только entmake)
 ;;;
 ;;;  Источник геометрии:
@@ -29,13 +29,15 @@
 (setq g_dk3s_font         "GOST.shx")       ; шрифт надписей как в чертежах ЭКОР (стиль GOST, наклон 15); в поставке nanoCAD его нет:
                                            ; скопировать GOST.shx в C:\ProgramData\Nanosoft\nanoCAD XX\SHX или поставить "CS_Gost2304.shx"
 (setq g_dk3s_txt_h        3.5)     ; высота текста на бумаге, мм
+(setq g_dk3s_font_k       1.08)    ; запас по ширине надписей сверх пропорций ГОСТ 2.304 тип Б (другой шрифт, подмена)
 ;; толщины линий (сотые мм) как в чертежах ЭКОР: контур 0,6; тонкие 0,3; рамка 0,6; размеры и текст 0,25
 (setq g_dk3s_lw_main 60)  (setq g_dk3s_lw_thin 30)  (setq g_dk3s_lw_frame 60)  (setq g_dk3s_lw_dim 25)
 (setq g_dk3s_designation  "302123.000 \\U+0412\\U+041E")   ; обозначение: 302123.000 - перв. примен. деталей корпуса (уточнить!)
 (setq g_dk3s_name1        "\\U+0414\\U+0430\\U+0442\\U+0447\\U+0438\\U+043A \\U+043A\\U+043E\\U+043D\\U+0446\\U+0435\\U+043D\\U+0442\\U+0440\\U+0430\\U+0446\\U+0438\\U+0438")
 (setq g_dk3s_name2        "\\U+0414\\U+041A-3\\U+0421-210\\U+0410\\U+0412")
 (setq g_dk3s_name3        "\\U+041E\\U+0431\\U+0449\\U+0438\\U+0439 \\U+0432\\U+0438\\U+0434")
-(setq g_dk3s_org          "\\U+041E\\U+041E\\U+041E \\U+041D\\U+0422\\U+041F \"\\U+042D\\U+043A\\U+043E\\U+0440\", \\U+041B\\U+044C\\U+0432\\U+043E\\U+0432")
+(setq g_dk3s_org1         "\\U+041E\\U+041E\\U+041E \\U+041D\\U+0422\\U+041F \"\\U+042D\\U+043A\\U+043E\\U+0440\"")   ; графа организации 50x15, две строки
+(setq g_dk3s_org2         "\\U+041B\\U+044C\\U+0432\\U+043E\\U+0432")
 (setq g_dk3s_author       "")      ; Разраб. (фамилия)
 (setq g_dk3s_checker      "")      ; Пров.
 
@@ -78,15 +80,15 @@
 (setq g_dk3s_plate_d      59.0)
 (setq g_dk3s_z_hex1       265.8)   ; шестигранник S46 корпуса
 (setq g_dk3s_hex1_s       46.0)
-(setq g_dk3s_z_hex1_ch    283.7)   ; начало фаски S46
+(setq g_dk3s_hex1_e       52.0)    ; по углам S46 (Ø52 по чертежу корпуса 714.761.000); фаска 30° со стороны гайки
 (setq g_dk3s_z_cyl        285.8)   ; правый торец корпуса; далее видимая резьба M33x2 гайки нажимной
 (setq g_dk3s_cyl_d        33.0)    ; M33x2-6g гайки
 (setq g_dk3s_thread2_pitch 2.0)
 (setq g_dk3s_z_groove     293.2)   ; канавка Ø30 x 3 у шестигранника гайки
 (setq g_dk3s_groove_d     30.0)
-(setq g_dk3s_z_hex2       296.6)   ; шестигранник S36 гайки нажимной (10 с фаской)
+(setq g_dk3s_z_hex2       296.6)   ; шестигранник S36 гайки нажимной (длина 10, фаска 30° с наружного торца)
 (setq g_dk3s_hex2_s       36.0)
-(setq g_dk3s_z_hex2_ch    305.0)
+(setq g_dk3s_hex2_e       41.0)    ; по углам S36 (Ø41 по чертежу гайки 714.541.000)
 (setq g_dk3s_z_neck       306.6)   ; труба электродного узла Ø20,8 (проходит через гайку и грундбуксу)
 (setq g_dk3s_neck_d       20.8)
 (setq g_dk3s_z_step       314.6)   ; ступень Ø18,8
@@ -212,6 +214,22 @@
                             '(100 . "AcDbArc") (cons 50 a1) (cons 51 a2))))
 )
 
+;; Дуга через три точки p1 -> p2 -> p3 (p2 — любая промежуточная точка дуги); точки — модель
+(defun dk3s_arc3 (p1 p2 p3 lay / ax ay bx by cx cy d ux uy c a1 a2 a3 tw)
+  (setq ax (car p1) ay (cadr p1) bx (car p2) by (cadr p2) cx (car p3) cy (cadr p3))
+  (setq d (* 2.0 (+ (* ax (- by cy)) (* bx (- cy ay)) (* cx (- ay by)))))
+  (setq ux (/ (+ (* (+ (* ax ax) (* ay ay)) (- by cy)) (* (+ (* bx bx) (* by by)) (- cy ay))
+                 (* (+ (* cx cx) (* cy cy)) (- ay by))) d)
+        uy (/ (+ (* (+ (* ax ax) (* ay ay)) (- cx bx)) (* (+ (* bx bx) (* by by)) (- ax cx))
+                 (* (+ (* cx cx) (* cy cy)) (- bx ax))) d))
+  (setq c (list ux uy 0.0) tw (* 2.0 pi))
+  (setq a1 (angle c p1) a2 (angle c p2) a3 (angle c p3))
+  ;; против часовой от a1 к a3 должна лежать a2, иначе дуга идёт от a3 к a1
+  (if (< (rem (+ (- a2 a1) tw tw) tw) (rem (+ (- a3 a1) tw tw) tw))
+    (dk3s_arc c (distance c p1) (dk3s_deg a1) (dk3s_deg a3) lay)
+    (dk3s_arc c (distance c p1) (dk3s_deg a3) (dk3s_deg a1) lay))
+)
+
 ;; Полилиния по списку 3D-точек; closed = T/nil; width — постоянная ширина
 (defun dk3s_pline (pts closed width lay / lst)
   (setq lst (list '(0 . "LWPOLYLINE") '(100 . "AcDbEntity") (cons 8 lay)
@@ -249,7 +267,12 @@
 
 ;; Текст: p — точка вставки, h — высота, rot — градусы,
 ;; just — 0 левый/низ, 1 центр/центр, 2 правый/низ, 3 центр/низ, 4 левый/середина
-(defun dk3s_text (p h str rot just lay / hj vj)
+(defun dk3s_text (p h str rot just lay)
+  (dk3s_text_wf p h str rot just lay 1.0)
+)
+
+;; То же с коэффициентом ширины wf (группа 41): так в штампах ЭКОР подгоняют надпись под графу
+(defun dk3s_text_wf (p h str rot just lay wf / hj vj)
   (cond ((= just 1) (setq hj 1 vj 2))
         ((= just 2) (setq hj 2 vj 0))
         ((= just 3) (setq hj 1 vj 0))
@@ -257,8 +280,62 @@
         (T (setq hj 0 vj 0)))
   (dk3s_made (entmake (list '(0 . "TEXT") '(100 . "AcDbEntity") (cons 8 lay)
                             '(100 . "AcDbText") (cons 10 p) (cons 40 h) (cons 1 str)
-                            (cons 50 rot) (cons 7 g_dk3s_style) (cons 72 hj) (cons 11 p)
+                            (cons 50 rot) (cons 41 wf) (cons 7 g_dk3s_style) (cons 72 hj) (cons 11 p)
                             '(100 . "AcDbText") (cons 73 vj))))
+)
+
+;; Оценка ширины надписи (в единицах h) при коэффициенте ширины 1 — с запасом, по пропорциям
+;; шрифта ГОСТ 2.304 тип Б (таков CS_Gost2304.shx nanoCAD; GOST.shx ЭКОР тоже широкий — в их
+;; штампах подписи сжаты до 0,6-0,95): прописная 0,8h, строчная и цифра 0,7h, пробел 0,6h,
+;; точка, запятая, скобки, дефис 0,45h; плюс вынос наклона 15 градусов 0,27h.
+;; Коды кириллицы (обратный слэш, U+, четыре цифры) считаются одним знаком.
+(defun dk3s_text_w (s h / i n c k w)
+  (setq i 1 w 0.0 n (strlen s))
+  (while (<= i n)
+    (setq c (ascii (substr s i 1)))
+    (if (and (= c 92) (= (substr s (1+ i) 2) "U+"))
+      (progn
+        (setq k (dk3s_hex4 (substr s (+ i 3) 4)))
+        (setq w (+ w (cond ((or (= k 1025) (and (>= k 1040) (<= k 1071))) 0.8)
+                           ((= k 8470) 1.0)
+                           (T 0.7))))
+        (setq i (+ i 7)))
+      (progn
+        (setq w (+ w (cond ((and (>= c 65) (<= c 90)) 0.8)
+                           ((= c 32) 0.6)
+                           ((member c '(33 34 39 40 41 44 45 46 58 59 73 105 108)) 0.45)
+                           (T 0.7))))
+        (setq i (1+ i)))))
+  (* h (+ w 0.27) g_dk3s_font_k)
+)
+
+;; Четыре шестнадцатеричные цифры -> целое (для кодов кириллицы)
+(defun dk3s_hex4 (s / i c r)
+  (setq i 1 r 0)
+  (while (<= i (strlen s))
+    (setq c (ascii (substr s i 1)))
+    (setq r (+ (* r 16) (cond ((<= c 57) (- c 48)) ((<= c 70) (- c 55)) (T (- c 87)))))
+    (setq i (1+ i)))
+  r
+)
+
+;; Перенос по словам: первая строка не шире w1, следующие не шире w2 (единицы модели)
+(defun dk3s_wrap (s h w1 w2 / words cur res i c lim)
+  (setq words nil cur "" i 1)
+  (while (<= i (strlen s))
+    (setq c (substr s i 1))
+    (if (= c " ")
+      (progn (if (/= cur "") (setq words (cons cur words))) (setq cur ""))
+      (setq cur (strcat cur c)))
+    (setq i (1+ i)))
+  (if (/= cur "") (setq words (cons cur words)))
+  (setq words (reverse words) res nil cur "" lim w1)
+  (foreach wd words
+    (if (and (/= cur "") (> (dk3s_text_w (strcat cur " " wd) h) lim))
+      (setq res (cons cur res) cur wd lim w2)
+      (setq cur (if (= cur "") wd (strcat cur " " wd)))))
+  (if (/= cur "") (setq res (cons cur res)))
+  (reverse res)
 )
 
 ;; Штриховка выпуклого многоугольника линиями под 45° с шагом pitch (тонкие линии)
@@ -412,15 +489,17 @@
 
 ;; Выноска: точка на детали (с точкой), излом, полка и текст над полкой
 ;; pt — точка на детали, ps — начало полки, dir — 1 полка вправо, -1 влево
-(defun dk3s_leader (pt ps dir str / h w pe)
+(defun dk3s_leader (pt ps dir str / h w g pe)
   (setq h (* g_dk3s_txt_h g_dk3s_scale_den))
-  (setq w (* h 0.6 (dk3s_strlen_vis str)))       ; оценка длины текста (ISOCPEUR ~0,6h)
-  (setq pe (list (+ (car ps) (* dir w)) (cadr ps) 0.0))
+  (setq w (dk3s_text_w str h))                   ; ширина надписи (ГОСТ 2.304 тип Б, с запасом)
+  (setq g (* 0.3 h))                             ; полка выступает за выноску: надпись не касается выноски
+  (setq pe (list (+ (car ps) (* dir (+ w g))) (cadr ps) 0.0))
   (dk3s_dot pt (* 0.5 g_dk3s_scale_den) g_dk3s_lay_thin)
   (dk3s_line pt ps g_dk3s_lay_thin)
   (dk3s_line ps pe g_dk3s_lay_thin)
-  (dk3s_text (list (if (> dir 0) (car ps) (car pe)) (+ (cadr ps) (* 0.25 h)) 0.0)
-             h str 0.0 0 g_dk3s_lay_text)
+  ;; надпись прижата к выноске: вправо — от левого края, влево — от правого (лишняя ширина уходит от выноски)
+  (dk3s_text (list (+ (car ps) (* dir g)) (+ (cadr ps) (* 0.25 h)) 0.0)
+             h str 0.0 (if (> dir 0) 0 2) g_dk3s_lay_text)
 )
 
 ;;; ---------------------------------------------------------------------------
@@ -447,6 +526,14 @@
              (* h g_dk3s_scale_den) str 0.0 just g_dk3s_lay_text)
 )
 
+;; Текст в штампе, подогнанный по ширине: не шире maxw (мм бумаги), иначе сжатие по ширине
+(defun dk3s_tb_fit (x y h str just maxw / w wf)
+  (setq w (dk3s_text_w str h))
+  (setq wf (if (> w maxw) (/ maxw w) 1.0))
+  (dk3s_text_wf (dk3s_ps (+ g_dk3s_tbx (* g_dk3s_scale_den x)) (+ g_dk3s_tby (* g_dk3s_scale_den y)))
+                (* h g_dk3s_scale_den) str 0.0 just g_dk3s_lay_text wf)
+)
+
 (defun dk3s_draw_frame ( / s w h x0 y0 x1 y1 gx0 gx1)
   (setq s g_dk3s_scale_den w (* s g_dk3s_sheet_w) h (* s g_dk3s_sheet_h))
   ;; граница листа (тонкая) и рамка (основная): поля 20 слева, 5 остальные
@@ -462,25 +549,26 @@
   (dk3s_tb_line 40.0 0.0 40.0 55.0)  (dk3s_tb_line 55.0 0.0 55.0 55.0)
   (dk3s_tb_line 0.0 30.0 65.0 30.0)
   (foreach yy '(5.0 10.0 15.0 20.0 25.0 35.0 40.0 45.0 50.0) (dk3s_tb_thin 0.0 yy 65.0 yy))
-  ;; правая часть 120 мм
+  ;; правая часть 120 мм (форма 1): обозначение 120x15; наименование 70x25, материал 70x15;
+  ;; справа 50 мм: Лит./Масса/Масштаб 15/17/18 (подписи 5, значения 15), Лист/Листов 20/30 (5), организация 15
   (dk3s_tb_line 65.0 40.0 185.0 40.0)   ; низ графы обозначения
   (dk3s_tb_line 65.0 15.0 135.0 15.0)   ; низ графы наименования
   (dk3s_tb_line 135.0 0.0 135.0 40.0)
-  (dk3s_tb_line 135.0 35.0 185.0 35.0)  (dk3s_tb_thin 135.0 30.0 185.0 30.0)
-  (dk3s_tb_line 135.0 25.0 185.0 25.0)
-  (dk3s_tb_line 150.0 30.0 150.0 40.0)  (dk3s_tb_line 170.0 30.0 170.0 40.0)
-  (dk3s_tb_thin 140.0 30.0 140.0 35.0)  (dk3s_tb_thin 145.0 30.0 145.0 35.0)
-  (dk3s_tb_thin 155.0 25.0 155.0 30.0)
-  ;; подписи граф (3 мм, как в чертежах ЭКОР)
-  (dk3s_tb_text 3.5 31.0 3.0 "\\U+0418\\U+0437\\U+043C." 3)      (dk3s_tb_text 12.0 31.0 3.0 "\\U+041B\\U+0438\\U+0441\\U+0442" 3)
-  (dk3s_tb_text 28.5 31.0 3.0 "\\U+2116 \\U+0434\\U+043E\\U+043A\\U+0443\\U+043C." 3) (dk3s_tb_text 47.5 31.0 3.0 "\\U+041F\\U+043E\\U+0434\\U+043F." 3)
-  (dk3s_tb_text 60.0 31.0 3.0 "\\U+0414\\U+0430\\U+0442\\U+0430" 3)
-  (dk3s_tb_text 1.0 26.0 3.0 "\\U+0420\\U+0430\\U+0437\\U+0440\\U+0430\\U+0431." 0)   (dk3s_tb_text 1.0 21.0 3.0 "\\U+041F\\U+0440\\U+043E\\U+0432." 0)
-  (dk3s_tb_text 1.0 16.0 3.0 "\\U+0422.\\U+043A\\U+043E\\U+043D\\U+0442\\U+0440." 0)  (dk3s_tb_text 1.0 6.0 3.0 "\\U+041D.\\U+043A\\U+043E\\U+043D\\U+0442\\U+0440." 0)
-  (dk3s_tb_text 1.0 1.0 3.0 "\\U+0423\\U+0442\\U+0432." 0)
-  (dk3s_tb_text 142.5 36.0 3.0 "\\U+041B\\U+0438\\U+0442." 3)    (dk3s_tb_text 160.0 36.0 3.0 "\\U+041C\\U+0430\\U+0441\\U+0441\\U+0430" 3)
-  (dk3s_tb_text 177.5 36.0 3.0 "\\U+041C\\U+0430\\U+0441\\U+0448\\U+0442\\U+0430\\U+0431" 3)
-  (dk3s_tb_text 137.0 26.0 3.0 "\\U+041B\\U+0438\\U+0441\\U+0442" 0)    (dk3s_tb_text 157.0 26.0 3.0 "\\U+041B\\U+0438\\U+0441\\U+0442\\U+043E\\U+0432" 0)
+  (dk3s_tb_line 135.0 35.0 185.0 35.0)  (dk3s_tb_line 135.0 20.0 185.0 20.0)
+  (dk3s_tb_line 135.0 15.0 185.0 15.0)
+  (dk3s_tb_line 150.0 20.0 150.0 40.0)  (dk3s_tb_line 167.0 20.0 167.0 40.0)
+  (dk3s_tb_thin 140.0 20.0 140.0 35.0)  (dk3s_tb_thin 145.0 20.0 145.0 35.0)
+  (dk3s_tb_line 155.0 15.0 155.0 20.0)
+  ;; подписи граф 3 мм, как в чертежах ЭКОР; не входит в графу (с зазором 1 мм с каждой стороны) — сжатие по ширине, как у ЭКОР
+  (dk3s_tb_fit 3.5 31.0 3.0 "\\U+0418\\U+0437\\U+043C." 3 5.0)       (dk3s_tb_fit 12.0 31.0 3.0 "\\U+041B\\U+0438\\U+0441\\U+0442" 3 8.0)
+  (dk3s_tb_fit 28.5 31.0 3.0 "\\U+2116 \\U+0434\\U+043E\\U+043A\\U+0443\\U+043C." 3 21.0) (dk3s_tb_fit 47.5 31.0 3.0 "\\U+041F\\U+043E\\U+0434\\U+043F." 3 13.0)
+  (dk3s_tb_fit 60.0 31.0 3.0 "\\U+0414\\U+0430\\U+0442\\U+0430" 3 8.0)
+  (dk3s_tb_fit 1.0 26.0 3.0 "\\U+0420\\U+0430\\U+0437\\U+0440\\U+0430\\U+0431." 0 15.0)   (dk3s_tb_fit 1.0 21.0 3.0 "\\U+041F\\U+0440\\U+043E\\U+0432." 0 15.0)
+  (dk3s_tb_fit 1.0 16.0 3.0 "\\U+0422.\\U+043A\\U+043E\\U+043D\\U+0442\\U+0440." 0 15.0)  (dk3s_tb_fit 1.0 6.0 3.0 "\\U+041D.\\U+043A\\U+043E\\U+043D\\U+0442\\U+0440." 0 15.0)
+  (dk3s_tb_fit 1.0 1.0 3.0 "\\U+0423\\U+0442\\U+0432." 0 15.0)
+  (dk3s_tb_fit 142.5 36.0 3.0 "\\U+041B\\U+0438\\U+0442." 3 13.0)    (dk3s_tb_fit 158.5 36.0 3.0 "\\U+041C\\U+0430\\U+0441\\U+0441\\U+0430" 3 15.0)
+  (dk3s_tb_fit 176.0 36.0 3.0 "\\U+041C\\U+0430\\U+0441\\U+0448\\U+0442\\U+0430\\U+0431" 3 16.0)
+  (dk3s_tb_fit 136.5 16.0 3.0 "\\U+041B\\U+0438\\U+0441\\U+0442" 0 8.0)     (dk3s_tb_fit 156.5 16.0 3.0 "\\U+041B\\U+0438\\U+0441\\U+0442\\U+043E\\U+0432" 0 12.0)
   ;; дополнительные графы (ГОСТ 2.104, форма 2): левое поле снизу вверх 25/35/25/25/35,
   ;; сверху "Перв. примен." и "Справ. №" по 60; графа обозначения 70x14 на верхней рамке
   (setq gx0 (* s 8.0) gx1 x0)
@@ -501,15 +589,16 @@
   (dk3s_text (dk3s_ps (+ g_dk3s_tbx (* s 100.0)) (- y0 (* s 4.0))) (* 2.5 s) "\\U+041A\\U+043E\\U+043F\\U+0438\\U+0440\\U+043E\\U+0432\\U+0430\\U+043B" 0.0 3 g_dk3s_lay_text)
   (dk3s_text (dk3s_ps (+ g_dk3s_tbx (* s 165.0)) (- y0 (* s 4.0))) (* 2.5 s) "\\U+0424\\U+043E\\U+0440\\U+043C\\U+0430\\U+0442 \\U+04103" 0.0 3 g_dk3s_lay_text)
   ;; содержимое граф
-  (dk3s_tb_text 125.0 45.5 5.0 g_dk3s_designation 3)
-  (dk3s_tb_text 100.0 33.5 4.0 g_dk3s_name1 3)
-  (dk3s_tb_text 100.0 26.0 4.0 g_dk3s_name2 3)
-  (dk3s_tb_text 100.0 18.5 4.0 g_dk3s_name3 3)
-  (dk3s_tb_text 177.5 30.5 5.0 (strcat "1:" (rtos g_dk3s_scale_den 2 0)) 3)
-  (dk3s_tb_text 148.0 26.0 3.0 "1" 0)       (dk3s_tb_text 175.0 26.0 3.0 "1" 0)
-  (dk3s_tb_text 160.0 10.0 4.0 g_dk3s_org 3)
-  (dk3s_tb_text 18.0 26.0 3.0 g_dk3s_author 0)
-  (dk3s_tb_text 18.0 21.0 3.0 g_dk3s_checker 0)
+  (dk3s_tb_fit 125.0 45.5 5.0 g_dk3s_designation 3 116.0)
+  (dk3s_tb_fit 100.0 33.5 4.0 g_dk3s_name1 3 66.0)
+  (dk3s_tb_fit 100.0 26.0 4.0 g_dk3s_name2 3 66.0)
+  (dk3s_tb_fit 100.0 18.5 4.0 g_dk3s_name3 3 66.0)
+  (dk3s_tb_text 176.0 27.5 5.0 (strcat "1:" (rtos g_dk3s_scale_den 2 0)) 1)
+  (dk3s_tb_text 148.0 16.0 3.0 "1" 0)       (dk3s_tb_text 176.0 16.0 3.0 "1" 0)
+  (dk3s_tb_fit 160.0 8.5 3.5 g_dk3s_org1 3 46.0)
+  (dk3s_tb_fit 160.0 3.0 3.5 g_dk3s_org2 3 46.0)
+  (dk3s_tb_fit 18.0 26.0 3.0 g_dk3s_author 0 22.0)
+  (dk3s_tb_fit 18.0 21.0 3.0 g_dk3s_checker 0 22.0)
 )
 
 ;;; ---------------------------------------------------------------------------
@@ -527,21 +616,24 @@
   (dk3s_line (dk3s_p z r1) (dk3s_p z r2) g_dk3s_lay_main)
 )
 
-;; Шестигранник в боковой проекции (грань к наблюдателю): s — размер под ключ
-(defun dk3s_hex (z1 z2 s / e)
-  (setq e (/ s (cos (dk3s_rad 30.0))))
-  (dk3s_cyl z1 z2 (/ e 2.0) 0.0)
-  (dk3s_cyl z1 z2 (/ e 4.0) 0.0)
-  (dk3s_face z1 (/ e -2.0) (/ e 2.0))
-  (dk3s_face z2 (/ e -2.0) (/ e 2.0))
+;; Шестигранник в боковой проекции (по углам к наблюдателю: видны три грани), как в чертежах ЭКОР.
+;; z1 — торец без фаски, z2 — торец с фаской 30 градусов до диаметра s; s — под ключ, e — по углам.
+;; Фаска режет рёбра на глубине c = (e - s)/2 * tg30; на каждой грани — дуга через концы рёбер
+;; и середину грани на торце (у гайки ЭКОР 714.541.000 так совпадает до 0,02 мм).
+(defun dk3s_hex (z1 z2 s e / c zc ys)
+  (setq c (* (/ (- e s) 2.0) (/ (sin (dk3s_rad 30.0)) (cos (dk3s_rad 30.0)))))
+  (setq zc (if (> z2 z1) (- z2 c) (+ z2 c)))          ; конец рёбер у фаски
+  (setq ys (* s (/ (sqrt 3.0) 4.0)))                   ; середина боковой грани в проекции
+  (dk3s_cyl z1 zc (/ e 2.0) 0.0)                       ; крайние рёбра
+  (dk3s_cyl z1 zc (/ e 4.0) 0.0)                       ; рёбра средней грани
+  (dk3s_face z1 (/ e -2.0) (/ e 2.0))                  ; торец без фаски
+  (dk3s_face z2 (/ s -2.0) (/ s 2.0))                  ; торец с фаской (окружность фаски = s)
+  (dk3s_line (dk3s_p z2 (/ s 2.0)) (dk3s_p zc (/ e 2.0)) g_dk3s_lay_main)
+  (dk3s_line (dk3s_p z2 (/ s -2.0)) (dk3s_p zc (/ e -2.0)) g_dk3s_lay_main)
+  (dk3s_arc3 (dk3s_p zc (/ e -4.0)) (dk3s_p z2 0.0) (dk3s_p zc (/ e 4.0)) g_dk3s_lay_main)
+  (dk3s_arc3 (dk3s_p zc (/ e 4.0)) (dk3s_p z2 ys) (dk3s_p zc (/ e 2.0)) g_dk3s_lay_main)
+  (dk3s_arc3 (dk3s_p zc (/ e -2.0)) (dk3s_p z2 (- ys)) (dk3s_p zc (/ e -4.0)) g_dk3s_lay_main)
   e
-)
-
-;; Фаска шестигранника: от углов e при z1 к диаметру d при z2
-(defun dk3s_hex_chamfer (z1 z2 e d)
-  (dk3s_line (dk3s_p z1 (/ e 2.0)) (dk3s_p z2 (/ d 2.0)) g_dk3s_lay_main)
-  (dk3s_line (dk3s_p z1 (/ e -2.0)) (dk3s_p z2 (/ d -2.0)) g_dk3s_lay_main)
-  (dk3s_face z2 (/ d -2.0) (/ d 2.0))
 )
 
 ;; Разъём-штырь токоотвода: буртик, корпус, штырь с острием; z0 — начало, r0 — ось
@@ -641,9 +733,8 @@
   (dk3s_face g_dk3s_z_plate (- rp) rp)
   (dk3s_cyl g_dk3s_z_plate g_dk3s_z_hex1 rp 0.0)
   (dk3s_face g_dk3s_z_hex1 (- rp) rp)
-  ;; шестигранник S46 с фаской
-  (setq e1 (dk3s_hex g_dk3s_z_hex1 g_dk3s_z_hex1_ch g_dk3s_hex1_s))
-  (dk3s_hex_chamfer g_dk3s_z_hex1_ch g_dk3s_z_cyl e1 g_dk3s_hex1_s)
+  ;; шестигранник S46 корпуса: фаска 30° со стороны гайки, дуги на гранях (как у ЭКОР)
+  (setq e1 (dk3s_hex g_dk3s_z_hex1 g_dk3s_z_cyl g_dk3s_hex1_s g_dk3s_hex1_e))
   ;; видимая резьба M33x2 гайки нажимной (наружный Ø33, внутренний - тонкая линия) и канавка Ø30
   (setq rc (/ g_dk3s_cyl_d 2.0) rg (/ g_dk3s_groove_d 2.0))
   (dk3s_cyl g_dk3s_z_cyl g_dk3s_z_groove rc 0.0)
@@ -652,9 +743,8 @@
   (dk3s_line (dk3s_p g_dk3s_z_cyl (/ d1 -2.0)) (dk3s_p g_dk3s_z_groove (/ d1 -2.0)) g_dk3s_lay_thin)
   (dk3s_face g_dk3s_z_groove (- rc) rc)
   (dk3s_cyl g_dk3s_z_groove g_dk3s_z_hex2 rg 0.0)
-  ;; шестигранник S36 с фаской
-  (setq e2 (dk3s_hex g_dk3s_z_hex2 g_dk3s_z_hex2_ch g_dk3s_hex2_s))
-  (dk3s_hex_chamfer g_dk3s_z_hex2_ch g_dk3s_z_neck e2 g_dk3s_hex2_s)
+  ;; шестигранник S36 гайки нажимной: фаска 30° с наружного торца
+  (setq e2 (dk3s_hex g_dk3s_z_hex2 g_dk3s_z_neck g_dk3s_hex2_s g_dk3s_hex2_e))
   ;; шейка Ø20,8, ступень Ø18,8, конус Ø16 -> Ø15,4
   (setq rn (/ g_dk3s_neck_d 2.0) rst (/ g_dk3s_step_d 2.0))
   (dk3s_cyl g_dk3s_z_neck g_dk3s_z_step rn 0.0)
@@ -741,9 +831,12 @@
 )
 
 ;; Осевая линия датчика
+;; Ось датчика; на бирке прерывается, чтобы не пересекать надпись на ней
 (defun dk3s_draw_axis ()
-  (dk3s_line (dk3s_p -6.0 0.0) (dk3s_p (+ g_dk3s_z_we_end g_dk3s_conn_collar_l g_dk3s_conn_body_l
-                                          1.0 g_dk3s_conn_pin_l g_dk3s_conn_tip_l 5.0) 0.0) g_dk3s_lay_axis)
+  (dk3s_line (dk3s_p -6.0 0.0) (dk3s_p g_dk3s_z_tag 0.0) g_dk3s_lay_axis)
+  (dk3s_line (dk3s_p g_dk3s_z_tag_end 0.0)
+             (dk3s_p (+ g_dk3s_z_we_end g_dk3s_conn_collar_l g_dk3s_conn_body_l
+                        1.0 g_dk3s_conn_pin_l g_dk3s_conn_tip_l 5.0) 0.0) g_dk3s_lay_axis)
 )
 
 (defun dk3s_draw_main_view ()
@@ -830,7 +923,7 @@
   (dk3s_leader (dk3s_p 12.0 rt) (dk3s_p 6.0 (+ rtip 6.0)) 1 "\\U+0417\\U+0430\\U+0449\\U+0438\\U+0442\\U+043D\\U+0430\\U+044F \\U+0442\\U+0440\\U+0443\\U+0431\\U+043A\\U+0430")
   (dk3s_leader (dk3s_p (+ zt 4.0) (- rtip)) (dk3s_p (+ zt 6.0) (- (- rtip) 7.0)) 1 "\\U+041D\\U+0430\\U+043A\\U+043E\\U+043D\\U+0435\\U+0447\\U+043D\\U+0438\\U+043A")
   (dk3s_leader (dk3s_p (+ zc 1.0) rw) (dk3s_p (+ zc 3.0) (+ rtip 6.0)) 1 "\\U+0420\\U+0430\\U+0431\\U+043E\\U+0447\\U+0438\\U+0439 \\U+044D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+0434")
-  (dk3s_leader (dk3s_p 6.0 (- rtap)) (dk3s_p -2.0 (- (- rtip) 13.0)) 1 "\\U+0422\\U+043E\\U+043A\\U+043E\\U+043E\\U+0442\\U+0432\\U+043E\\U+0434 \\U+0440\\U+0430\\U+0431\\U+043E\\U+0447\\U+0435\\U+0433\\U+043E \\U+044D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+0434\\U+0430")
+  (dk3s_leader (dk3s_p 6.0 (- rtap)) (dk3s_p 12.0 (- (- rtip) 13.0)) 1 "\\U+0422\\U+043E\\U+043A\\U+043E\\U+043E\\U+0442\\U+0432\\U+043E\\U+0434 \\U+0440\\U+0430\\U+0431\\U+043E\\U+0447\\U+0435\\U+0433\\U+043E \\U+044D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+0434\\U+0430")
   ;; заголовок вида
   (dk3s_text (dk3s_p (/ zw 2.0) (+ rtip 14.0)) (* h 1.4) "\\U+0410 (2:1)" 0.0 3 g_dk3s_lay_text)
   (dk3s_line (dk3s_p (- (/ zw 2.0) 7.0) (+ rtip 13.2)) (dk3s_p (+ (/ zw 2.0) 7.0) (+ rtip 13.2)) g_dk3s_lay_thin)
@@ -841,9 +934,8 @@
 ;;;    Размерные точки берутся из таблицы параметров — значения вычисляются CAD.
 ;;; ---------------------------------------------------------------------------
 
-(defun dk3s_draw_dims_main ( / rs re e1 e2 rp zh1 zh2 zre1 zre2 y1 y2 y3 y4 zpl)
+(defun dk3s_draw_dims_main ( / rs re rp zre1 zre2 y1 y2 y3 y4 zpl)
   (setq rs (/ g_dk3s_sleeve_d 2.0) re (/ g_dk3s_re_d 2.0) rp (/ g_dk3s_plate_d 2.0))
-  (setq e1 (/ g_dk3s_hex1_s (cos (dk3s_rad 30.0))) e2 (/ g_dk3s_hex2_s (cos (dk3s_rad 30.0))))
   (setq y1 -40.0 y2 -56.0 y3 -70.0 y4 -84.0)       ; уровни горизонтальных размеров (снизу)
   ;; перфорация: первое отверстие от вершины скобы и шаг
   (dk3s_dim (dk3s_p 0.0 0.0) (dk3s_p g_dk3s_hole_z1 0.0) (dk3s_p 0.0 y1) 0.0 "")
@@ -859,17 +951,12 @@
   ;; высота скобы (сверху)
   (dk3s_dim (dk3s_p 0.0 (/ g_dk3s_guard_w 2.0)) (dk3s_p g_dk3s_z_sleeve (/ g_dk3s_guard_w 2.0))
             (dk3s_p 0.0 42.0) 0.0 "")
-  ;; диаметры и размеры под ключ — вертикальные размеры на деталях
+  ;; диаметры: гильза и присоединительная резьба M42x3 корпуса
   (dk3s_dim (dk3s_p 130.0 rs) (dk3s_p 130.0 (- rs)) (dk3s_p 130.0 0.0) 90.0 "%%c<>")
   (dk3s_dim (dk3s_p 246.0 (/ g_dk3s_shell_d 2.0)) (dk3s_p 246.0 (/ g_dk3s_shell_d -2.0)) (dk3s_p 246.0 0.0) 90.0
             (strcat "M<>x" (dk3s_num g_dk3s_thread_pitch 0)))
-  (dk3s_dim (dk3s_p 262.3 rp) (dk3s_p 262.3 (- rp)) (dk3s_p 262.3 0.0) 90.0 "%%c<>")
-  (setq zh1 (/ (+ g_dk3s_z_hex1 g_dk3s_z_hex1_ch) 2.0) zh2 (/ (+ g_dk3s_z_hex2 g_dk3s_z_hex2_ch) 2.0))
-  (dk3s_dim (dk3s_p zh1 (/ g_dk3s_hex1_s 2.0)) (dk3s_p zh1 (/ g_dk3s_hex1_s -2.0)) (dk3s_p zh1 0.0) 90.0 "S<>")
-  (dk3s_dim (dk3s_p zh2 (/ g_dk3s_hex2_s 2.0)) (dk3s_p zh2 (/ g_dk3s_hex2_s -2.0)) (dk3s_p zh2 0.0) 90.0 "S<>")
-  (dk3s_dim (dk3s_p 289.5 (/ g_dk3s_cyl_d 2.0)) (dk3s_p 289.5 (/ g_dk3s_cyl_d -2.0)) (dk3s_p 289.5 0.0) 90.0
-            (strcat "M<>x" (dk3s_num g_dk3s_thread2_pitch 0)))
-  (dk3s_dim (dk3s_p 310.6 (/ g_dk3s_neck_d 2.0)) (dk3s_p 310.6 (/ g_dk3s_neck_d -2.0)) (dk3s_p 310.6 0.0) 90.0 "%%c<>")
+  ;; размеры корпуса и гайки нажимной (Ø59, S46, M33x2, S36, Ø20,8) на общем виде не ставятся —
+  ;; они на чертежах деталей 714.761.000 и 714.541.000 (решение 19.09.2026)
   (dk3s_dim (dk3s_p g_dk3s_z_shell (/ g_dk3s_shell_d -2.0)) (dk3s_p g_dk3s_z_cyl (/ g_dk3s_hex1_s -2.0)) (dk3s_p 0.0 -40.0) 0.0 "")
   (dk3s_dim (dk3s_p 455.0 (/ g_dk3s_tube_d 2.0)) (dk3s_p 455.0 (/ g_dk3s_tube_d -2.0)) (dk3s_p 455.0 0.0) 90.0 "%%c<>")
   (dk3s_dim (dk3s_p 440.0 (+ g_dk3s_se_r (/ g_dk3s_se_d 2.0))) (dk3s_p 440.0 (- g_dk3s_se_r (/ g_dk3s_se_d 2.0)))
@@ -882,39 +969,56 @@
             (dk3s_p (+ g_dk3s_z_total 14.0) 0.0) 90.0 "")
 )
 
-(defun dk3s_draw_labels_main ( / ya yb yc rs rp rc rre e2)
-  (setq ya 52.0 yb 68.0 yc 84.0)                  ; полки выносок: три ряда над датчиком
+(defun dk3s_draw_labels_main ( / ya yb yc ye yd yd2 rs rp rc rre e2)
+  ;; полки выносок: ряды над датчиком и под ним (между размерными цепями).
+  ;; Раскладка подобрана перебором (19.09.2026, plan_labels.py; запас ширины g_dk3s_font_k, зазор 0,5 мм): при ширине надписей
+  ;; шрифтом ГОСТ 2.304 тип Б надписи не пересекаются ни с чем, выноски не пересекают друг друга,
+  ;; полки, размеры и надписи; линии деталей пересекают только выноски наконечника (изнутри скобы)
+  ;; и токоотвода рабочего электрода (под мостиками). Проверка — tools/lispcheck/check_text_fit.py.
+  (setq ya 52.0 yb 68.0 yc 84.0 ye 100.0 yd -46.0 yd2 -52.0)
   (setq rs (/ g_dk3s_sleeve_d 2.0) rp (/ g_dk3s_plate_d 2.0) rc (/ g_dk3s_clamp_d 2.0))
-  (setq e2 (/ g_dk3s_hex2_s (cos (dk3s_rad 30.0))) rre (+ g_dk3s_re_r (/ g_dk3s_re_d 2.0)))
+  (setq e2 g_dk3s_hex2_e rre (+ g_dk3s_re_r (/ g_dk3s_re_d 2.0)))
   ;; ряд A
   (dk3s_leader (dk3s_p (- g_dk3s_z_sleeve 2.0) (+ g_dk3s_tip_off (/ g_dk3s_tip_d 2.0)))
-               (dk3s_p 22.0 ya) 1 "\\U+041D\\U+0430\\U+043A\\U+043E\\U+043D\\U+0435\\U+0447\\U+043D\\U+0438\\U+043A (\\U+0441\\U+043C. \\U+0410)")
-  (dk3s_leader (dk3s_p 250.0 (/ g_dk3s_shell_d 2.0)) (dk3s_p 226.0 ya) 1 "\\U+041A\\U+043E\\U+0440\\U+043F\\U+0443\\U+0441 714.761.000")
-  (dk3s_leader (dk3s_p (+ g_dk3s_z_clamp1 3.8) rc) (dk3s_p 372.0 ya) 1 "\\U+0425\\U+043E\\U+043C\\U+0443\\U+0442")
-  (dk3s_leader (dk3s_p 492.0 (/ g_dk3s_conn_body_d 2.0)) (dk3s_p 455.0 ya) 1 "\\U+0422\\U+043E\\U+043A\\U+043E\\U+043E\\U+0442\\U+0432\\U+043E\\U+0434 \\U+0440\\U+0430\\U+0431\\U+043E\\U+0447\\U+0435\\U+0433\\U+043E \\U+044D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+0434\\U+0430")
+               (dk3s_p 31.6 ya) 1 "\\U+041D\\U+0430\\U+043A\\U+043E\\U+043D\\U+0435\\U+0447\\U+043D\\U+0438\\U+043A (\\U+0441\\U+043C. \\U+0410)")
+  (dk3s_leader (dk3s_p 240.0 (/ g_dk3s_shell_d 2.0))
+               (dk3s_p 240.0 ya) -1 "\\U+041A\\U+043E\\U+0440\\U+043F\\U+0443\\U+0441 714.761.000")
+  (dk3s_leader (dk3s_p (+ g_dk3s_z_clamp1 3.8) rc)
+               (dk3s_p (+ g_dk3s_z_clamp1 3.8) ya) 1 "\\U+0425\\U+043E\\U+043C\\U+0443\\U+0442")
   ;; ряд B
-  (dk3s_leader (dk3s_p 150.0 rs) (dk3s_p 120.0 yb) 1 "\\U+0417\\U+0430\\U+0449\\U+0438\\U+0442\\U+043D\\U+0430\\U+044F \\U+0433\\U+0438\\U+043B\\U+044C\\U+0437\\U+0430")
-  (dk3s_leader (dk3s_p 300.8 (/ e2 2.0)) (dk3s_p 284.0 yb) 1 "\\U+0413\\U+0430\\U+0439\\U+043A\\U+0430 \\U+043D\\U+0430\\U+0436\\U+0438\\U+043C\\U+043D\\U+0430\\U+044F")
-  (dk3s_leader (dk3s_p 430.0 (+ g_dk3s_bridge_r (/ g_dk3s_bridge_d 2.0))) (dk3s_p 400.0 yb) 1
-               "\\U+042D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+043B\\U+0438\\U+0442\\U+0438\\U+0447\\U+0435\\U+0441\\U+043A\\U+0438\\U+0439 \\U+043C\\U+043E\\U+0441\\U+0442\\U+0438\\U+043A (2 \\U+0448\\U+0442.)")
-  (dk3s_leader (dk3s_p 605.0 (- (- g_dk3s_re_r) (/ g_dk3s_conn_pin_d 2.0))) (dk3s_p 548.0 -46.0) 1
-               "\\U+0422\\U+043E\\U+043A\\U+043E\\U+043E\\U+0442\\U+0432\\U+043E\\U+0434 \\U+044D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+0434\\U+0430 \\U+0441\\U+0440\\U+0430\\U+0432\\U+043D\\U+0435\\U+043D\\U+0438\\U+044F")
+  (dk3s_leader (dk3s_p 0.6 9.5)
+               (dk3s_p -7.4 yb) 1 "\\U+0417\\U+0430\\U+0449\\U+0438\\U+0442\\U+043D\\U+0430\\U+044F \\U+0441\\U+043A\\U+043E\\U+0431\\U+0430")
+  (dk3s_leader (dk3s_p 130.0 rs)
+               (dk3s_p 130.0 yb) 1 "\\U+0417\\U+0430\\U+0449\\U+0438\\U+0442\\U+043D\\U+0430\\U+044F \\U+0433\\U+0438\\U+043B\\U+044C\\U+0437\\U+0430")
+  (dk3s_leader (dk3s_p 327.0 (/ g_dk3s_tag_w 2.0))
+               (dk3s_p 327.0 yb) 1 "\\U+0411\\U+0438\\U+0440\\U+043A\\U+0430 \\U+0441 \\U+0437\\U+0430\\U+0432\\U+043E\\U+0434\\U+0441\\U+043A\\U+0438\\U+043C \\U+043D\\U+043E\\U+043C\\U+0435\\U+0440\\U+043E\\U+043C")
+  (dk3s_leader (dk3s_p 605.0 (+ g_dk3s_re_r (/ g_dk3s_conn_pin_d 2.0)))
+               (dk3s_p 571.0 yb) 1 "\\U+0422\\U+043E\\U+043A\\U+043E\\U+043E\\U+0442\\U+0432\\U+043E\\U+0434 \\U+044D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+0434\\U+0430 \\U+0441\\U+0440\\U+0430\\U+0432\\U+043D\\U+0435\\U+043D\\U+0438\\U+044F")
   ;; ряд C
-  (dk3s_leader (dk3s_p 8.0 (/ g_dk3s_guard_w 2.0)) (dk3s_p -12.0 yc) 1 "\\U+0417\\U+0430\\U+0449\\U+0438\\U+0442\\U+043D\\U+0430\\U+044F \\U+0441\\U+043A\\U+043E\\U+0431\\U+0430")
-  (dk3s_leader (dk3s_p 262.3 rp) (dk3s_p 250.0 yc) 1 "\\U+0424\\U+043B\\U+0430\\U+043D\\U+0435\\U+0446 \\U+043A\\U+043E\\U+0440\\U+043F\\U+0443\\U+0441\\U+0430")
-  (dk3s_leader (dk3s_p 330.0 (/ g_dk3s_tag_w 2.0)) (dk3s_p 336.0 yc) 1 "\\U+0411\\U+0438\\U+0440\\U+043A\\U+0430 \\U+0441 \\U+0437\\U+0430\\U+0432\\U+043E\\U+0434\\U+0441\\U+043A\\U+0438\\U+043C \\U+043D\\U+043E\\U+043C\\U+0435\\U+0440\\U+043E\\U+043C")
-  (dk3s_leader (dk3s_p 560.0 rre) (dk3s_p 520.0 yc) 1 "\\U+042D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+0434 \\U+0441\\U+0440\\U+0430\\U+0432\\U+043D\\U+0435\\U+043D\\U+0438\\U+044F (2 \\U+0448\\U+0442.)")
-  ;; снизу
-  (dk3s_leader (dk3s_p 400.0 (- g_dk3s_se_r (/ g_dk3s_se_d 2.0))) (dk3s_p 330.0 -46.0) 1
-               "\\U+0422\\U+043E\\U+043A\\U+043E\\U+043E\\U+0442\\U+0432\\U+043E\\U+0434 \\U+0432\\U+0441\\U+043F\\U+043E\\U+043C\\U+043E\\U+0433\\U+0430\\U+0442\\U+0435\\U+043B\\U+044C\\U+043D\\U+043E\\U+0433\\U+043E \\U+044D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+0434\\U+0430")
+  (dk3s_leader (dk3s_p 262.3 rp)
+               (dk3s_p 262.3 yc) -1 "\\U+0424\\U+043B\\U+0430\\U+043D\\U+0435\\U+0446 \\U+043A\\U+043E\\U+0440\\U+043F\\U+0443\\U+0441\\U+0430")
+  (dk3s_leader (dk3s_p 298.5 (/ e2 2.0))
+               (dk3s_p 298.5 yc) 1 "\\U+0413\\U+0430\\U+0439\\U+043A\\U+0430 \\U+043D\\U+0430\\U+0436\\U+0438\\U+043C\\U+043D\\U+0430\\U+044F")
+  (dk3s_leader (dk3s_p 530.0 rre)
+               (dk3s_p 520.0 yc) 1 "\\U+042D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+0434 \\U+0441\\U+0440\\U+0430\\U+0432\\U+043D\\U+0435\\U+043D\\U+0438\\U+044F (2 \\U+0448\\U+0442.)")
+  ;; ряд D
+  (dk3s_leader (dk3s_p 470.0 (+ g_dk3s_bridge_r (/ g_dk3s_bridge_d 2.0)))
+               (dk3s_p 470.0 ye) -1 "\\U+042D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+043B\\U+0438\\U+0442\\U+0438\\U+0447\\U+0435\\U+0441\\U+043A\\U+0438\\U+0439 \\U+043C\\U+043E\\U+0441\\U+0442\\U+0438\\U+043A (2 \\U+0448\\U+0442.)")
+  (dk3s_leader (dk3s_p 488.0 (/ g_dk3s_conn_body_d 2.0))
+               (dk3s_p 488.0 ye) 1 "\\U+0422\\U+043E\\U+043A\\U+043E\\U+043E\\U+0442\\U+0432\\U+043E\\U+0434 \\U+0440\\U+0430\\U+0431\\U+043E\\U+0447\\U+0435\\U+0433\\U+043E \\U+044D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+0434\\U+0430")
+  ;; снизу, второй ряд
+  (dk3s_leader (dk3s_p 400.0 (- g_dk3s_se_r (/ g_dk3s_se_d 2.0)))
+               (dk3s_p 400.0 yd2) 1 "\\U+0422\\U+043E\\U+043A\\U+043E\\U+043E\\U+0442\\U+0432\\U+043E\\U+0434 \\U+0432\\U+0441\\U+043F\\U+043E\\U+043C\\U+043E\\U+0433\\U+0430\\U+0442\\U+0435\\U+043B\\U+044C\\U+043D\\U+043E\\U+0433\\U+043E \\U+044D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+0434\\U+0430")
   ;; обозначение выносного элемента А на главном виде
   (dk3s_circle (dk3s_p 9.0 g_dk3s_tip_off) 20.0 g_dk3s_lay_thin)
-  (dk3s_text (dk3s_p 26.0 (+ g_dk3s_tip_off 14.0)) (* 1.4 g_dk3s_txt_h g_dk3s_scale_den) "\\U+0410" 0.0 0 g_dk3s_lay_text)
+  (dk3s_text (dk3s_p 28.0 (+ g_dk3s_tip_off 15.0)) (* 1.4 g_dk3s_txt_h g_dk3s_scale_den) "\\U+0410" 0.0 0 g_dk3s_lay_text)
 )
 
-;; Технические требования — над основной надписью
-(defun dk3s_draw_notes (x y / h dy lines i)
+;; Технические требования: строки переносятся по ширине до рамки (продолжение — с отступом под номером),
+;; блок ставится так, чтобы последняя строка была на 8 мм выше основной надписи; y — не выше этого уровня
+(defun dk3s_draw_notes (x y / h dy lines i xr rows w0 n y0 r)
   (setq h (* g_dk3s_txt_h g_dk3s_scale_den) dy (* h 1.7))
+  (setq xr (* g_dk3s_scale_den (- g_dk3s_sheet_w 8.0)))          ; правый край текста: рамка минус 3 мм
   (setq lines (list
     "1. * \\U+0420\\U+0430\\U+0437\\U+043C\\U+0435\\U+0440\\U+044B \\U+0434\\U+043B\\U+044F \\U+0441\\U+043F\\U+0440\\U+0430\\U+0432\\U+043E\\U+043A."
     "2. \\U+0420\\U+0430\\U+0431\\U+043E\\U+0447\\U+0438\\U+0439 \\U+044D\\U+043B\\U+0435\\U+043A\\U+0442\\U+0440\\U+043E\\U+0434 - \\U+043F\\U+0440\\U+043E\\U+0432\\U+043E\\U+043B\\U+043E\\U+043A\\U+0430 \\U+00D81,4 \\U+043C\\U+043C, \\U+0432\\U+044B\\U+0441\\U+0442\\U+0443\\U+043F 2 \\U+043C\\U+043C."
@@ -923,9 +1027,21 @@
     "5. \\U+041A\\U+043E\\U+0440\\U+043F\\U+0443\\U+0441, \\U+0433\\U+0430\\U+0439\\U+043A\\U+0430 \\U+043D\\U+0430\\U+0436\\U+0438\\U+043C\\U+043D\\U+0430\\U+044F, \\U+0433\\U+0440\\U+0443\\U+043D\\U+0434\\U+0431\\U+0443\\U+043A\\U+0441\\U+0430 - 08\\U+042518\\U+041D10\\U+0422 \\U+0413\\U+041E\\U+0421\\U+0422 5949-75 (\\U+0447\\U+0435\\U+0440\\U+0442. 714.761.000, 714.541.000, 711.171.000)."
     "6. \\U+0422\\U+043E\\U+043A\\U+043E\\U+043E\\U+0442\\U+0432\\U+043E\\U+0434\\U+044B: RE1 - \\U+0441\\U+0438\\U+043D\\U+0438\\U+0439, RE2 - \\U+0431\\U+0435\\U+043B\\U+044B\\U+0439, WE - \\U+043A\\U+0440\\U+0430\\U+0441\\U+043D\\U+044B\\U+0439, SE - \\U+0447\\U+0451\\U+0440\\U+043D\\U+044B\\U+0439."
     "7. \\U+0413\\U+0435\\U+043E\\U+043C\\U+0435\\U+0442\\U+0440\\U+0438\\U+044F - \\U+043F\\U+043E \\U+043C\\U+043E\\U+043D\\U+0442\\U+0430\\U+0436\\U+043D\\U+043E\\U+043C\\U+0443 \\U+0447\\U+0435\\U+0440\\U+0442\\U+0435\\U+0436\\U+0443 \\U+0442\\U+0435\\U+0445\\U+043E\\U+043F\\U+0438\\U+0441\\U+0430\\U+043D\\U+0438\\U+044F K1 (\\U+043B\\U+0438\\U+0441\\U+0442 16) \\U+0438 \\U+0447\\U+0435\\U+0440\\U+0442\\U+0435\\U+0436\\U+0430\\U+043C \\U+0434\\U+0435\\U+0442\\U+0430\\U+043B\\U+0435\\U+0439 \\U+042D\\U+041A\\U+041E\\U+0420."))
-  (setq i 0)
+  ;; разбивка на строки: список (текст отступ)
+  (setq rows nil)
   (foreach s lines
-    (dk3s_text (dk3s_ps x (- y (* i dy))) h s 0.0 0 g_dk3s_lay_text)
+    (setq w0 (- (dk3s_text_w (substr s 1 3) h) (* 0.27 h)))       ; ширина "N. " — отступ продолжения
+    (setq r 0)
+    (foreach ln (dk3s_wrap s h (- xr x) (- xr x w0))
+      (setq rows (cons (list ln (if (= r 0) 0.0 w0)) rows) r (1+ r))
+    )
+  )
+  (setq rows (reverse rows) n (length rows))
+  (setq y0 (+ g_dk3s_tby (* g_dk3s_scale_den 63.0) (* (1- n) dy)))  ; низ последней строки: штамп + 8 мм
+  (if (< y y0) (setq y0 y))
+  (setq i 0)
+  (foreach rw rows
+    (dk3s_text (dk3s_ps (+ x (cadr rw)) (- y0 (* i dy))) h (car rw) 0.0 0 g_dk3s_lay_text)
     (setq i (1+ i))
   )
 )
@@ -989,7 +1105,7 @@
 
   (setq g_dk3s_stage "NOTES")
   (setq g_dk3s_ox 0.0 g_dk3s_oy 0.0 g_dk3s_k 1.0)
-  (dk3s_draw_notes (* s 232.0) (* s 118.0))
+  (dk3s_draw_notes (* s 232.0) (* s 160.0))
 
   (setq g_dk3s_stage "DONE")
   (command "_.ZOOM" "_E")
@@ -999,5 +1115,5 @@
   (princ)
 )
 
-(princ "\nDK3S v1.0.1 loaded. Command: DK3S")
+(princ "\nDK3S v1.1.0 loaded. Command: DK3S")
 (princ)
