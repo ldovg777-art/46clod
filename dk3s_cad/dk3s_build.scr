@@ -1,0 +1,16 @@
+; dk3s_build.scr - пакетное построение чертежа ДК-3С в nanoCAD без графического окна.
+; Запуск (из папки со скриптом):  nCad.exe -invisible -s dk3s_build.scr   или dk3s_build.bat
+; Если подсказки команды SAVEAS в вашей версии отличаются - поправьте две последние строки.
+FILEDIA
+0
+CMDECHO
+0
+(load "dk3s_drawing.lsp")
+DK3S
+_.ZOOM
+_E
+_.SAVEAS
+2013
+dk3s_drawing.dwg
+_.QUIT
+_Y
