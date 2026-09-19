@@ -86,6 +86,27 @@ LABELS = json.load(open(sys.argv[3], encoding="utf-8")) if len(sys.argv) > 3 els
 for lab in LABELS:
     leader(tuple(lab["p"]), tuple(lab["knee"]), lab["text"], lab["dir"])
 
+# --- размеры (точки модели — sensor_iso_fc.py). Стиль как у листа общего вида (стрелки 3, выносные 1,25, отступ
+# и зазор 0,625, текст 3,5 над линией, запятая, DIMTIX/DIMTOFL 1, DIMTMOVE 0); лист в мм бумаги при 1:2 -> DIMLFAC 2,
+# число автоматическое (в приведённой изометрии длины вдоль осей истинные). Группа 52 — добавка к повороту.
+doc.dimstyles.add("DK3S_ISO", dxfattribs={
+    "dimtxsty": "GOST", "dimtxt": 3.5, "dimasz": 3.0, "dimexo": 0.625, "dimexe": 1.25, "dimgap": 0.625,
+    "dimtad": 1, "dimtih": 0, "dimtoh": 0, "dimtix": 1, "dimtofl": 1, "dimtmove": 0, "dimdec": 1, "dimzin": 8,
+    "dimdsep": 44, "dimlfac": 2.0, "dimscale": 1.0})
+doc.layers.add("ISO_DIM", color=7, lineweight=25)
+ND = 0
+for dm in d.get("dims", []):
+    P1, P2, PD, PT = (T3(*dm[k]) for k in ("p1", "p2", "pd", "pt"))
+    rot_deg = math.degrees(math.atan2(P2[1] - P1[1], P2[0] - P1[0]))
+    q = T3(*(a + b for a, b in zip(dm["p1"], dm["ext"])))
+    obl = (math.degrees(math.atan2(q[1] - P1[1], q[0] - P1[0])) - rot_deg + 180.0) % 360.0 - 180.0
+    dim = msp.add_linear_dim(base=PD, p1=P1, p2=P2, location=PT, angle=rot_deg, text="<>", dimstyle="DK3S_ISO",
+                             dxfattribs={"layer": "ISO_DIM", "oblique_angle": obl})
+    dim.dimstyle_attribs.pop("dimtmove", None)     # как в интерпретаторе: действует DIMTMOVE стиля
+    dim.render()
+    dim.dimension.dxf.text_midpoint = PT          # место числа (флаг 128); блок размера перестроит ODA
+    ND += 1
+
 w = (max(p[0] for p in pts) - x0) * K * S
 h = (max(p[1] for p in pts) - y0) * K * S
 t = msp.add_text("Датчик концентрации ДК-3С-210АВ. Изометрия с вырезом (1:2)", height=5.0,
@@ -107,4 +128,4 @@ fx0, fy0, fx1, fy1 = ext.extmin.x - 6.0, ext.extmin.y - 6.0, ext.extmax.x + 6.0,
 doc.layers.add("ISO_FRAME", color=7, lineweight=35)
 msp.add_lwpolyline([(fx0, fy0), (fx1, fy0), (fx1, fy1), (fx0, fy1)], close=True, dxfattribs={"layer": "ISO_FRAME"})
 doc.saveas(sys.argv[1])
-print(f"saved {sys.argv[1]}: {len(vis)} contour polylines, {nh} hatch lines, picture {w:.1f} x {h:.1f} mm")
+print(f"saved {sys.argv[1]}: {len(vis)} contour polylines, {nh} hatch lines, {ND} dims, picture {w:.1f} x {h:.1f} mm")

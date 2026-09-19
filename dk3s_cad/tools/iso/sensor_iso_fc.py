@@ -113,8 +113,18 @@ edges = project(Part.makeCompound(shapes))
 ax = TechDraw.projectEx(Part.makeLine(V(-4.0, 0, 0), V(m.Z_TAG + 4.0, 0, 0)), direction)
 edges["axis"] = [[[round(v.X, 4), round(v.Y, 4)] for c in ax if c is not None and not c.isNull() for v in c.Vertexes]]
 edges["hatch"] = hatches
+# размеры на изометрии — точки модели из констант sensor_model (правка модели двигает и размер).
+# Толщина гровера: по нижней плоскости разреза z=0 (там сечение шайбы видно между грундбуксой и гайкой),
+# выносные — вдоль -Y (ГОСТ 2.317: параллельно аксонометрической оси), размерная линия — в 10 мм бумаги
+# (20 мм модели при 1:2) от наибольшего радиуса корпуса (углы шестигранника S46), ГОСТ 2.307; число — за
+# стрелкой со стороны гайки (там свободно; сверху над корпусом идут выноски).
+x_w0 = m.Z_NUT0 - m.GROVER_S
+r_w = m.GROVER_D / 2.0 + m.GROVER_B
+r_dim = m.HEX1_E / 2.0 + 20.0
+dims = [{"name": "толщина гровера", "p1": [x_w0, -r_w, 0.0], "p2": [m.Z_NUT0, -r_w, 0.0],
+         "pd": [x_w0, -r_dim, 0.0], "pt": [m.Z_NUT0 + 12.0, -r_dim, 0.0], "ext": [0.0, -1.0, 0.0]}]
 with open(os.path.join(OUT, "sensor_iso_cut.json"), "w", encoding="utf-8") as f:
-    json.dump({"edges": edges, "map": {"O": o, "M": M}}, f)
+    json.dump({"edges": edges, "map": {"O": o, "M": M}, "dims": dims}, f)
 print("SENSOR_ISO_OK", {k: len(v) for k, v in edges.items() if k not in ("hatch",) and v},
       "| cut faces", nfaces, "| hatch", {k: len(v) for k, v in hatches.items()},
       "| check axis end", Pj(V(m.Z_TAG + 4.0, 0, 0)), edges["axis"][0][-1])

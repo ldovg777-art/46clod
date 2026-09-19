@@ -855,6 +855,8 @@ class DxfBackend:
                     style = "Standard"
                 txt = decode_text(first(1, "")) or "<>"
                 loc = first(11) if int(first(70, 0)) & 128 else None     # число на заданном месте (группа 11)
+                if first(52) is not None:        # наклон выносных линий: добавка к повороту (группа 50)
+                    A["oblique_angle"] = float(first(52))
                 dim = self.msp.add_linear_dim(base=first(10), p1=first(13), p2=first(14), angle=first(50, 0.0),
                                               location=loc, text=txt, dimstyle=style, dxfattribs=A)
                 # ezdxf при заданном месте числа пишет в размер переопределение DIMTMOVE 2 (без линии до числа);
@@ -937,6 +939,9 @@ class DxfBackend:
                 elif isinstance(v, str) and v.upper() == "_H":
                     angle = 0.0
                     i += 1
+                elif isinstance(v, str) and v.upper() == "_R":      # повёрнутый размер: "_R" угол
+                    angle = float(a[i + 1])
+                    i += 2
                 elif isinstance(v, str) and v.upper() == "_T":
                     txt = decode_text(a[i + 1]) or "<>"
                     i += 2

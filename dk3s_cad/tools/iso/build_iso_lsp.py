@@ -88,12 +88,28 @@ def main():
         txt = lab["text"].replace('"', '\\"')
         out.append(f"  (dk3s_leader (dk3s_iso_p {f(pt[0])} {f(pt[1])}) (dk3s_iso_p {f(kx)} {f(ky)}) {lab['dir']} \"{txt}\")")
         nl += 1
+    # размеры (sensor_iso_fc.py, точки модели): угол размерной линии и наклон выносных — по проекции;
+    # группа 52 в CAD — добавка к повороту (опыт с ODA 19.09.2026); число автоматическое — вдоль осей длины истинные
+    nd = 0
+    g = lambda v: f"{v:.4f}"
+    for dm in d.get("dims", []):
+        P1, P2, PD, PT = (T3(*dm[k]) for k in ("p1", "p2", "pd", "pt"))
+        rot_deg = math.degrees(math.atan2(P2[1] - P1[1], P2[0] - P1[0]))
+        q = T3(*(a + b for a, b in zip(dm["p1"], dm["ext"])))
+        ext_deg = math.degrees(math.atan2(q[1] - P1[1], q[0] - P1[0]))
+        obl = (ext_deg - rot_deg + 180.0) % 360.0 - 180.0
+        out.append(f"  (dk3s_dim_obl (dk3s_iso_p {g(P1[0])} {g(P1[1])}) (dk3s_iso_p {g(P2[0])} {g(P2[1])}) "
+                   f"(dk3s_iso_p {g(PD[0])} {g(PD[1])}) {rot_deg:.2f} {obl:.2f} \"\" "
+                   f"(dk3s_iso_p {g(PT[0])} {g(PT[1])}))   ; {dm['name']}")
+        nd += 1
     out.append(")")
     w = (max(p[0] for p in allp) - x0) * K * S
     h = (max(p[1] for p in allp) - y0) * K * S
-    out.append(f";;; картинка {w:.1f} x {h:.1f} мм бумаги; полилиний {len(vis)}, точек {npts}, штриховка {nh}, выносок {nl}")
+    out.append(f";;; картинка {w:.1f} x {h:.1f} мм бумаги; полилиний {len(vis)}, точек {npts}, штриховка {nh}, выносок {nl}, "
+               f"размеров {nd}")
     open(sys.argv[3], "w", encoding="utf-8", newline="\r\n").write("\n".join(out) + "\n")
-    print(f"iso lsp: {len(vis)} polylines, {npts} points, {nh} hatch lines, {nl} leaders, picture {w:.1f} x {h:.1f} mm")
+    print(f"iso lsp: {len(vis)} polylines, {npts} points, {nh} hatch lines, {nl} leaders, {nd} dims, "
+          f"picture {w:.1f} x {h:.1f} mm")
 
 
 if __name__ == "__main__":

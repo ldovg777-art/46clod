@@ -1,6 +1,6 @@
 ;;; ============================================================================
 ;;;  dk3s_drawing.lsp  —  Чертёж общего вида датчика концентрации ДК-3С-210АВ
-;;;  Версия: 1.3.2  (2026-09-19)
+;;;  Версия: 1.3.3  (2026-09-19)
 ;;;  Платформа: nanoCAD / AutoCAD / BricsCAD / ZWCAD (AutoLISP, только entmake)
 ;;;
 ;;;  Источник геометрии:
@@ -564,6 +564,35 @@
         (command "_.DIMLINEAR" p1 p2 (if (= rot 90) "_V" "_H") pd)
         (command "_.DIMLINEAR" p1 p2 (if (= rot 90) "_V" "_H") "_T" txt pd)
       )
+      (setq g_dk3s_cnt (1+ g_dk3s_cnt))
+    )
+  )
+)
+
+;; Размер на аксонометрии (ГОСТ 2.317): размерная линия под углом rot (параллельно измеряемому отрезку),
+;; выносные линии — под углом rot + obl (параллельно аксонометрической оси); группа 52 — добавка к повороту
+;; (опыт с ODA 19.09.2026: при rot 30 и obl -60 выносные легли под 150°). В приведённой изометрии длина вдоль
+;; осей на листе истинная, поэтому число — автоматическое (txt ""). tp — место числа (флаг 128), как у dk3s_dim_t.
+;; Запасной путь без entmake — повёрнутый размер командой, без наклона выносных.
+(defun dk3s_dim_obl (p1 p2 pd rot obl txt tp / r)
+  (if (= g_dk3s_dim_mode "entmake")
+    (progn
+      (setq r (entmake (append
+                         (list '(0 . "DIMENSION") '(100 . "AcDbEntity") (cons 8 g_dk3s_lay_dim)
+                               '(100 . "AcDbDimension") (cons 10 pd))
+                         (if tp (list (cons 11 tp)) nil)
+                         (list (cons 70 (if tp 160 32)) (cons 1 txt) (cons 3 g_dk3s_dimstyle)
+                               '(100 . "AcDbAlignedDimension") (cons 13 p1) (cons 14 p2)
+                               (cons 50 rot) (cons 52 obl) '(100 . "AcDbRotatedDimension")))))
+      (if r
+        (dk3s_made r)
+        (setq g_dk3s_dim_mode "command")
+      )
+    )
+  )
+  (if (/= g_dk3s_dim_mode "entmake")
+    (progn
+      (command "_.DIMLINEAR" p1 p2 "_R" rot pd)
       (setq g_dk3s_cnt (1+ g_dk3s_cnt))
     )
   )
@@ -2373,9 +2402,10 @@
   (dk3s_leader (dk3s_iso_p 123.73 81.21) (dk3s_iso_p 128 132) -1 "Шайба пружинная (гровер)")
   (dk3s_leader (dk3s_iso_p 132.78 91.54) (dk3s_iso_p 140 144) -1 "Гайка нажимная")
   (dk3s_leader (dk3s_iso_p 127.59 56.04) (dk3s_iso_p 145 40) 1 "Корпус")
+  (dk3s_dim_obl (dk3s_iso_p 129.2549 70.6266) (dk3s_iso_p 131.2034 71.7516) (dk3s_iso_p 142.7865 62.8141) 30.00 -60.00 "" (dk3s_iso_p 149.9312 66.9391))   ; толщина гровера
 )
-;;; картинка 271.1 x 172.5 мм бумаги; полилиний 553, точек 2292, штриховка 528, выносок 9
+;;; картинка 271.1 x 172.5 мм бумаги; полилиний 553, точек 2292, штриховка 528, выносок 9, размеров 1
 ;;; === ISO END ===
 
-(princ "\nDK3S v1.3.2 loaded. Command: DK3S")
+(princ "\nDK3S v1.3.3 loaded. Command: DK3S")
 (princ)
