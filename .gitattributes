@@ -1,0 +1,3 @@
+# Встроенные сторонние библиотеки — байт в байт как скачаны (sha256 в SOURCES.txt): без замены концов строк,
+# иначе при core.autocrlf=true хеши разойдутся и export_3d_html.py откажется собирать HTML.
+dk3s_cad/tools/iso/vendor/** -text
