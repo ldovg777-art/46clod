@@ -1,6 +1,6 @@
 ;;; ============================================================================
 ;;;  dk3s_drawing.lsp  —  Чертёж общего вида датчика концентрации ДК-3С-210АВ
-;;;  Версия: 1.3.3  (2026-09-19)
+;;;  Версия: 1.3.4  (2026-09-26)
 ;;;  Платформа: nanoCAD / AutoCAD / BricsCAD / ZWCAD (AutoLISP, только entmake)
 ;;;
 ;;;  Источник геометрии:
@@ -1263,11 +1263,13 @@
 
   (setq g_dk3s_stage "TABLES")
   (dk3s_make_ltype)
+  ;; все слои — цвет 7: чёрный на бумаге и на светлом фоне (на тёмном CAD показывает его белым);
+  ;; слово Леонида 26.09.2026 «сделай чёрным и ДК-3С» (v1.3.4; было: тонкие 8, осевые 1, размеры 4, надписи 2)
   (dk3s_make_layer g_dk3s_lay_main  7 "Continuous" g_dk3s_lw_main)
-  (dk3s_make_layer g_dk3s_lay_thin  8 "Continuous" g_dk3s_lw_thin)
-  (dk3s_make_layer g_dk3s_lay_axis  1 g_dk3s_ltype_axis g_dk3s_lw_thin)
-  (dk3s_make_layer g_dk3s_lay_dim   4 "Continuous" g_dk3s_lw_dim)
-  (dk3s_make_layer g_dk3s_lay_text  2 "Continuous" g_dk3s_lw_dim)
+  (dk3s_make_layer g_dk3s_lay_thin  7 "Continuous" g_dk3s_lw_thin)
+  (dk3s_make_layer g_dk3s_lay_axis  7 g_dk3s_ltype_axis g_dk3s_lw_thin)
+  (dk3s_make_layer g_dk3s_lay_dim   7 "Continuous" g_dk3s_lw_dim)
+  (dk3s_make_layer g_dk3s_lay_text  7 "Continuous" g_dk3s_lw_dim)
   (dk3s_make_layer g_dk3s_lay_frame 7 "Continuous" g_dk3s_lw_frame)
   (dk3s_make_layer g_dk3s_lay_iso   7 "Continuous" g_dk3s_lw_iso)
   (dk3s_make_style)
