@@ -58,7 +58,8 @@ def oda_recompute(oda, dxf_path):
             doc.blocks.delete_block(n, safe=False)
     doc.saveas(os.path.join(src, "dk3s_drawing.dxf"))
     for a, b, fmt, flt in ((src, mid, "DWG", "*.DXF"), (mid, back, "DXF", "*.DWG")):
-        subprocess.run([oda, a, b, "ACAD2018", fmt, "0", "1", flt], check=True, timeout=300)
+        # ACAD2013 (AC1027): nanoCAD 5.1 не открывает DWG 2018 (опыт 26.09.2026), чертежи Андрея — тоже 2013
+        subprocess.run([oda, a, b, "ACAD2013", fmt, "0", "1", flt], check=True, timeout=300)
     dxf, dwg = os.path.join(back, "dk3s_drawing.dxf"), os.path.join(mid, "dk3s_drawing.dwg")
     if not (os.path.isfile(dxf) and os.path.isfile(dwg)):
         raise RuntimeError("ODA не создал файлы в " + tmp)
