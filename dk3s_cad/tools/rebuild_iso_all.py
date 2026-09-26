@@ -7,7 +7,7 @@
  2. раздел 11 LISP (изометрия): build_iso_lsp.py + update_iso_section.py
  3. dk3s_drawing.lsp из читаемого исходника (lisp_cyr_escape.py) + обратная проверка — должно совпасть байт в байт
  4. run_dk3s.py: лист (DXF, DWG, размеры строит ODA, превью 10000 px) и малое превью 2400 px
- 5. check_text_fit.py по листу — обычный и строгий режим, нарушений должно быть 0
+ 5. check_text_fit.py по листу — обычный, строгий и «как в nanoCAD 5.1» (--nano), нарушений должно быть 0
  6. отдельный лист изометрии: build_sensor_iso_dxf.py -> размеры строит ODA -> DWG; проверка надписей
  7. --publish: в «Мой диск\\AutoCAD» — DWG изометрии, STEP, скрипты модели в _скрипты_изометрии (прежние файлы —
     в ПАПКА/backup), сверка хешей, галерея.
@@ -72,7 +72,7 @@ def sha(p):
 
 def text_fit(dxf):
     res = []
-    for extra in ([], ["--margin", "-0.15"]):
+    for extra in ([], ["--margin", "-0.15"], ["--nano"]):     # --nano: как рисует nanoCAD 5.1 (26.09.2026)
         out = run([PY, LC / "check_text_fit.py", dxf] + extra)
         m = re.search(r"нарушений:\s*(\d+)", out)
         if not m:

@@ -21,6 +21,7 @@ import sys
 import ezdxf
 
 NARROW = set(".,:;!'\"()-Iil")
+NANO = None           # --nano: функция длины строки по CS_Gost2304.shx (run_dk3s.text_measure)
 FONT_K = 1.08          # запас по ширине, как g_dk3s_font_k в LISP
 
 
@@ -43,8 +44,12 @@ def text_box(t, margin):
     s = t.dxf.text
     h = t.dxf.height
     wf = t.dxf.get("width", 1.0)
-    w = h * (sum(char_w(c) for c in s) + 0.27) * wf * FONT_K
-    hj, vj = t.dxf.get("halign", 0), t.dxf.get("valign", 0)
+    if NANO:                              # как nanoCAD 5.1: строка от точки 10, длина по его шрифту
+        w = NANO(t.plain_text(), h, wf)
+        hj = vj = 0
+    else:
+        w = h * (sum(char_w(c) for c in s) + 0.27) * wf * FONT_K
+        hj, vj = t.dxf.get("halign", 0), t.dxf.get("valign", 0)
     x0 = {0: 0.0, 1: -w / 2.0, 2: -w, 4: -w / 2.0}.get(hj, 0.0)
     y0 = {0: 0.0, 1: 0.0, 2: -h / 2.0, 3: -h}.get(vj, 0.0)
     m = margin * h
@@ -164,7 +169,17 @@ def main():
     ap.add_argument("dxf")
     ap.add_argument("--margin", type=float, default=0.1, help="сжатие прямоугольника надписи внутрь, доля h; отрицательное — запас наружу (кроме низа)")
     ap.add_argument("--list", action="store_true", help="напечатать все надписи с оценкой ширины")
+    ap.add_argument("--nano", action="store_true",
+                    help="как рисует nanoCAD 5.1: строка от точки 10, длина по CS_Gost2304.shx (26.09.2026)")
     a = ap.parse_args()
+    if a.nano:
+        global NANO
+        import os as _os
+        import sys as _sys
+        _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+        from run_dk3s import text_measure
+        NANO, _, src = text_measure()
+        print("режим nanoCAD: строка от точки 10, шрифт", src)
     doc = ezdxf.readfile(a.dxf)
     msp = doc.modelspace()
     texts = [t for t in msp.query("TEXT") if t.dxf.text.strip()]

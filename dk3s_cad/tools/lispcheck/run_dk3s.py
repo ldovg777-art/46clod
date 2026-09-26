@@ -38,6 +38,51 @@ def find_oda(arg):
     return found[-1] if found else None
 
 
+# Шрифт, которым nanoCAD 5.1 рисует стиль GOST.shx: своего GOST.shx у него нет, берёт запасной FONTALT =
+# CS_Gost2304.shx (ProgramData\Nanosoft\nanoCAD 5.1\SHX). Длины строк по его глифам сверены со снимком экрана
+# Леонида 26.09.2026 — расхождение около 2 %.
+SHX_GLOB = os.path.join(os.environ.get("ProgramData", r"C:\ProgramData"), "Nanosoft", "nanoCAD*", "SHX",
+                        "CS_Gost2304.shx")
+
+
+def text_measure():
+    """Функция длины строки (текст, высота, сжатие) -> мм и доля нижнего выноса от высоты.
+    CS_Gost2304.shx, если найден; иначе — шрифт ezdxf по умолчанию (приблизительно)."""
+    found = sorted(glob.glob(SHX_GLOB))
+    if found:
+        from ezdxf.fonts import shapefile
+        shx = shapefile.readfile(found[-1])
+        gc = shapefile.GlyphCache(shx)
+        return (lambda t, h, w: gc.get_text_length(t, h, w)), shx.descender / shx.cap_height, found[-1]
+    from ezdxf.fonts import fonts
+    return (lambda t, h, w: fonts.make_font("txt.shx", h, w).text_width(t)), 0.3, "шрифт ezdxf по умолчанию"
+
+
+def fix_text_insert(msp):
+    """Точка вставки (10) выровненного TEXT — начало строки на базовой линии, как её считает CAD.
+    Интерпретатор и ezdxf пишут в 10 ту же точку, что в 11 (точку выравнивания). AutoCAD и ezdxf сами пересчитывают
+    по 11, а nanoCAD 5.1 рисует строку от 10: центрированные надписи уезжали вправо на полстроки (26.09.2026).
+    Возвращает (исправлено надписей, чем меряли)."""
+    import math
+    measure, desc, src = text_measure()
+    n = 0
+    for e in msp.query("TEXT"):
+        h, v = e.dxf.get("halign", 0), e.dxf.get("valign", 0)
+        if (h == 0 and v == 0) or h in (3, 5) or not e.dxf.hasattr("align_point"):
+            continue
+        a = e.dxf.align_point
+        if (e.dxf.insert - a).magnitude > 1e-6:      # точку 10 уже посчитал CAD — не трогать
+            continue
+        hh, wf = e.dxf.height, e.dxf.get("width", 1.0)
+        w = measure(e.plain_text(), hh, wf)
+        dx = {0: 0.0, 1: -w / 2.0, 2: -w, 4: -w / 2.0}.get(h, 0.0)
+        dy = -hh / 2.0 if h == 4 else {0: 0.0, 1: desc * hh, 2: -hh / 2.0, 3: -hh}.get(v, 0.0)
+        r = math.radians(e.dxf.get("rotation", 0.0))
+        e.dxf.insert = (a[0] + dx * math.cos(r) - dy * math.sin(r), a[1] + dx * math.sin(r) + dy * math.cos(r), a[2])
+        n += 1
+    return n, src
+
+
 def oda_recompute(oda, dxf_path):
     """Блоки размеров убираются, ODA строит их заново (DXF -> DWG с аудитом -> DXF).
     Заданное положение числа (флаг 128, группа 11) сохраняется. Возвращает (dxf, dwg, временная папка)."""
@@ -56,6 +101,7 @@ def oda_recompute(oda, dxf_path):
     for n in names:
         if n and n in doc.blocks:
             doc.blocks.delete_block(n, safe=False)
+    fix_text_insert(doc.modelspace())
     doc.saveas(os.path.join(src, "dk3s_drawing.dxf"))
     for a, b, fmt, flt in ((src, mid, "DWG", "*.DXF"), (mid, back, "DXF", "*.DWG")):
         # ACAD2013 (AC1027): nanoCAD 5.1 не открывает DWG 2018 (опыт 26.09.2026), чертежи Андрея — тоже 2013
