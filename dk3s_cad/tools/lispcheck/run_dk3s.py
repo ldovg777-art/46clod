@@ -102,6 +102,8 @@ def oda_recompute(oda, dxf_path):
         if n and n in doc.blocks:
             doc.blocks.delete_block(n, safe=False)
     fix_text_insert(doc.modelspace())
+    doc.header["$LWDISPLAY"] = 1      # толщины линий видны сразу при открытии (в nanoCAD по умолчанию выключены,
+                                        # все линии казались одинаковыми — Леонид 26.09.2026)
     doc.saveas(os.path.join(src, "dk3s_drawing.dxf"))
     for a, b, fmt, flt in ((src, mid, "DWG", "*.DXF"), (mid, back, "DXF", "*.DWG")):
         # ACAD2013 (AC1027): nanoCAD 5.1 не открывает DWG 2018 (опыт 26.09.2026), чертежи Андрея — тоже 2013
